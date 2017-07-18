@@ -457,4 +457,4 @@ if __name__ == '__main__':
         tests = glob('test_data/**')
         segmented_images = []
         for index, slice_img in enumerate(tests):
-            segmented_images.append(model.save_segmented_image(index, slice=slice_img, save=True))
+            segmented_images.append(model.save_segmented_image(index, test_img=slice_img, save=True))
