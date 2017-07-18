@@ -23,6 +23,7 @@ from keras.models import Sequential, model_from_json
 from keras.layers import Conv2D, Dense, Flatten, Activation
 from keras.initializers import glorot_normal
 from keras.optimizers import SGD
+from keras.callbacks import EarlyStopping
 from keras.utils.np_utils import to_categorical
 from sklearn.feature_extraction.image import extract_patches_2d
 from skimage.filters import prewitt, laplace
@@ -144,6 +145,8 @@ class Edge_detector_cnn(object):
                   momentum=0.9,
                   nesterov=True)
         print(sgd)
+        EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=1, mode='auto')
+
         self.model.compile(optimizer=sgd,
                            loss='categorical_crossentropy',
                            metrics=['accuracy'])
