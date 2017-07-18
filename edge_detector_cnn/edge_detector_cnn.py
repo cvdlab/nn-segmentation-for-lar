@@ -145,7 +145,7 @@ class Edge_detector_cnn(object):
                   momentum=0.9,
                   nesterov=True)
         print(sgd)
-        EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=1, mode='auto')
+        EarlyStopping(monitor='val_loss', min_delta=0.002, patience=2, verbose=1, mode='auto')
 
         self.model.compile(optimizer=sgd,
                            loss='categorical_crossentropy',
