@@ -275,10 +275,7 @@ class Brain_tumor_segmentation_model(object):
             n_epochs = 20
         else:
             n_epochs = 25
-        print(X_train.shape)
-        print('*' * 100)
-        print(Y_train.shape)
-        exit(0)
+
         self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=128, verbose=1)
 
     def save_model(self, model_name):
@@ -313,7 +310,6 @@ class Brain_tumor_segmentation_model(object):
         """
         predicts classes of input image
         :param test_img: filepath to image to predict on
-        :param save: displays segmentation results
         :return: segmented result
         """
         # imgs = io.imread(test_img).astype('float').reshape(5, 216, 160)
@@ -322,16 +318,17 @@ class Brain_tumor_segmentation_model(object):
 
         plist = []
 
-        # create patches from an entire slice
+        # create patches_to_predict from an entire slice
         for img in imgs[:-1]:
             if np.max(img) != 0:
                 img /= np.max(img)
             p = extract_patches_2d(img, (33, 33))
             plist.append(p)
-        patches = np.array(zip(np.array(plist[0]), np.array(plist[1]), np.array(plist[2]), np.array(plist[3])))
+        patches_to_predict = np.array(
+            zip(np.array(plist[0]), np.array(plist[1]), np.array(plist[2]), np.array(plist[3])))
 
         # predict classes of each pixel based on model
-        full_pred = self.model.predict_classes(patches)
+        full_pred = self.model.predict_classes(patches_to_predict)
         fp1 = full_pred.reshape(184, 128)
         return fp1
 
@@ -339,7 +336,6 @@ class Brain_tumor_segmentation_model(object):
         """
         Creates an image of original brain with segmentation overlay
         :param test_img: filepath to test image for segmentation, including file extension
-        :param modality: imaging modality to use as background. defaults to t1c. options: (flair, t1, t1c, t2)
         :param save: If true, shows output image. (defaults to False)
         :return: if show is True, shows image of segmentation results
                  if show is false, returns segmented image.
