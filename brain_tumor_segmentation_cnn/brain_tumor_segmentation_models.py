@@ -344,7 +344,6 @@ class Brain_tumor_segmentation_model(object):
         :return: if show is True, shows image of segmentation results
                  if show is false, returns segmented image.
         """
-        modes = {'flair': 0, 't1': 1, 't1c': 2, 't2': 3}
 
         segmentation = self.predict_image(test_img)
 
