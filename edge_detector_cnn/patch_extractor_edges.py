@@ -32,14 +32,65 @@ from sklearn.feature_extraction.image import extract_patches_2d
 from skimage.filters import prewitt, laplace
 from skimage.color import rgb2gray
 from skimage.transform import rotate
-from skimage.io import imread
+from skimage.io import imread, imsave
+from errno import EEXIST
+from os.path import isdir
+from os import makedirs
+from glob import glob
 import numpy as np
-import progressbar
-
-progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 
 
-class Patch_extractor(object):
+def mkdir_p(path):
+    """
+    mkdir -p function, makes folder recursively if required
+    :type path: basestring
+    :param path:
+    :return:
+    """
+    try:
+        makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == EEXIST and isdir(path):
+            pass
+        else:
+            raise
+
+
+def get_right_order(filename):
+    """
+    gives a key_value function for a sorted extraction
+    :param filename:  path to image
+    :return:
+    """
+    last_part = filename.split('/')[len(filename.split('/')) - 1]
+    number_value = last_part[:-4]
+    return int(number_value)
+
+
+def count_center(edge, patch):
+    """
+    this function sum the value in the square of dimension 3x3
+    in the center of the patch
+    :param edge: the mask obtained with the filter
+    :param patch: the actual patch
+    :return:
+    """
+    sum_center = 0.0
+    for k in range(-1, 1):
+        for j in range(-1, 1):
+            sum_center += edge[len(patch) / 2 + k][len(patch) / 2 + j]
+
+    # return sum_center
+    return sum(edge[(len(patch) / 2) - 1: (len(patch) / 2) + 1][len(patch) / 2 - 1:len(patch) / 2 + 1])
+
+
+def rotate_patches(patch, edge_1, edge_2, rotating_angle):
+    return np.array([rotate(patch, rotating_angle, resize=False),
+                     rotate(edge_1, rotating_angle, resize=False),
+                     rotate(edge_2, rotating_angle, resize=False)])
+
+
+class PatchExtractor(object):
     def __init__(self, num_samples=None, path_to_images=None, patch_size=(23, 23), augmentation_angle=0):
         """
         load and store all necessary information to achieve the patch extraction
@@ -71,7 +122,7 @@ class Patch_extractor(object):
 
     def make_training_patches(self):
         """
-        Creates datas( all patches) and labels for training CNN
+        Creates datas(all patches) and labels for training CNN
         :return:
         datas : patches (num_samples, 3_chan, height, wide)
         labels (num_samples,)
@@ -79,8 +130,7 @@ class Patch_extractor(object):
         classes = [0, 1]
         per_class = self.num_samples / len(classes)
         patches, labels = [], []
-        progress.currval = 0
-        for i in progress(xrange(len(classes))):
+        for i in xrange(len(classes)):
             p, l = self._find_patches(classes[i], per_class)
             patches.append(p)
             labels.append(l)
@@ -102,118 +152,157 @@ class Patch_extractor(object):
         labels = np.ones(per_class * self.augmentation_multiplier) * class_number
 
         ten_percent_black = 0
-        ten_percent_black_value = int(float(per_class) * 0.001)
-        for i in range(0, per_class):
-            extracted = False
-            random_image = self.images[randint(0, len(self.images) - 1)]
-            while np.array_equal(random_image, np.zeros(random_image.shape)):
+        ten_percent_black_value = int(float(per_class) * 0.0001)
+
+        lap_trsh = 0.53
+        prew_trsh = 0.15
+        start_value_extraction = 0
+        full = False
+
+        if isdir('patches/') and isdir('patches/lap_{}_prew_{}/'.format(lap_trsh,
+                                                                        prew_trsh)) and isdir(
+            'patches/lap_{}_prew_{}/class_{}/'.format(lap_trsh,
+                                                      prew_trsh,
+                                                      class_number)):
+
+            # load all patches
+            # check if quantity is enough to work
+            path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**'.format(lap_trsh,
+                                                                                        prew_trsh,
+                                                                                        class_number)),
+                                     key=get_right_order)
+
+            for path_index in xrange(len(path_to_patches)):
+                if path_index < per_class:
+                    patches.append(imread(path_to_patches[path_index],
+                                          astype=float).reshape(3,
+                                                                self.patch_size[0],
+                                                                self.patch_size[1]))
+                    print('*---> patch {} loaded and added '.format(path_index))
+                else:
+                    full = True
+                    break
+
+            if len(path_to_patches) < per_class:
+                # change start_value_extraction
+                start_value_extraction = len(path_to_patches)
+            else:
+                full = True
+        else:
+            mkdir_p('patches/lap_{}_prew_{}/class_{}'.format(lap_trsh,
+                                                             prew_trsh,
+                                                             class_number))
+        if not full:
+            for i in range(start_value_extraction, per_class):
+                extracted = False
                 random_image = self.images[randint(0, len(self.images) - 1)]
-            patches_from_random = np.array(extract_patches_2d(random_image, self.patch_size, per_class))
-            counter = 0
-            lap_trsh = 0.53
-            prew_trsh = 0.15
-
-            while not extracted:
-                if counter > per_class / 2:
+                while np.array_equal(random_image, np.zeros(random_image.shape)):
                     random_image = self.images[randint(0, len(self.images) - 1)]
-                    patches_from_random = np.array(
-                        extract_patches_2d(random_image, self.patch_size, per_class))
-                    counter = 0
-                patch_1 = np.array(patches_from_random[randint(0, per_class - 1)].astype(float))
-                patch = patch_1 / (256 * 256)
-                edges_2 = prewitt(patch)
-                edges_5 = laplace(patch)
-                edges_5_n = (edges_5 + 1.) / 2
+                patches_from_random = np.array(extract_patches_2d(random_image, self.patch_size, per_class))
+                counter = 0
 
-                if class_number == 1:
-                    first_cond = not np.array_equal(patch, np.zeros(patch.shape))
-                    if first_cond:
-                        second_cond = (edges_5_n[len(patch) / 2, len(patch) / 2] > lap_trsh or
-                                       self.count_center(edges_2, patch) > prew_trsh)
-                        if second_cond:
-                            final_patch = np.array([patch, edges_2, edges_5_n])
-                            patches.append(final_patch)
-                            print('*---> patch {} added'.format(i))
-                            if self.augmentation_angle != 0:
-                                for j in range(1, self.augmentation_multiplier):
-                                    patches.append(self.rotate_patches(patch,
-                                                                       edges_2,
-                                                                       edges_5_n,
-                                                                       self.augmentation_angle * j))
+                while not extracted:
+                    if counter > per_class / 2:
+                        random_image = self.images[randint(0, len(self.images) - 1)]
+                        patches_from_random = np.array(
+                            extract_patches_2d(random_image, self.patch_size, per_class))
+                        counter = 0
+                    patch_1 = np.array(patches_from_random[randint(0, per_class - 1)].astype(float))
+                    patch = patch_1 / (256 * 256)
+                    edges_2 = prewitt(patch)
+                    edges_5 = laplace(patch)
+                    if edges_5.max() > 1 or edges_5.min() < -1:
+                        max_value = max(edges_5.max(), -1 * edges_5.min())
+                        edges_5_n = (edges_5) / max_value
+                    else:
+                        edges_5_n = edges_5
 
-                                    print('*---> patch {} added with rotation of {} degrees '.format(i,
-                                                                                                     self.augmentation_angle * j))
-
-                            else:
-                                pass
-                            extracted = True
-
-                elif class_number == 0:
-                    first_cond = edges_5_n[len(patch) / 2, len(patch) / 2] <= lap_trsh and \
-                                 self.count_center(edges_2, patch) <= prew_trsh
-                    if first_cond:
-                        if np.array_equal(patch, np.zeros(patch.shape)):
-                            if ten_percent_black < ten_percent_black_value:
+                    if class_number == 1:
+                        first_cond = not np.array_equal(patch, np.zeros(patch.shape))
+                        if first_cond:
+                            second_cond = (edges_5_n[len(patch) / 2, len(patch) / 2] > lap_trsh or
+                                           count_center(edges_2, patch) > prew_trsh)
+                            if second_cond:
                                 final_patch = np.array([patch, edges_2, edges_5_n])
                                 patches.append(final_patch)
-                                print('*---> patch {} added'.format(i))
-                                ten_percent_black += 1
-                                if self.augmentation_angle != 0:
-                                    for j in range(1, self.augmentation_multiplier):
-                                        patches.append(self.rotate_patches(patch,
-                                                                           edges_2,
-                                                                           edges_5_n,
-                                                                           self.augmentation_angle * j))
-                                        print('*---> patch {} added with rotation of {} degrees '.format(i,
-                                                                                                         self.augmentation_angle * j))
+                                try:
+                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
+                                                                                             prew_trsh,
+                                                                                             class_number,
+                                                                                             i),
+                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                except:
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
+                                    exit(0)
 
+                                print('*---> patch {} added and saved '.format(i))
+                                extracted = True
+
+                    elif class_number == 0:
+                        first_cond = edges_5_n[len(patch) / 2, len(patch) / 2] <= lap_trsh and \
+                                     count_center(edges_2, patch) <= prew_trsh
+                        if first_cond:
+                            if np.array_equal(patch, np.zeros(patch.shape)):
+                                if ten_percent_black < ten_percent_black_value:
+                                    final_patch = np.array([patch, edges_2, edges_5_n])
+                                    patches.append(final_patch)
+                                    try:
+                                        imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
+                                                                                                 prew_trsh,
+                                                                                                 class_number,
+                                                                                                 i),
+                                               final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                    except:
+                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
+                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
+                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
+                                        exit(0)
+
+                                    print('*---> patch {} added and saved '.format(i))
+                                    ten_percent_black += 1
+                                    extracted = True
                                 else:
                                     pass
+                            else:
+                                final_patch = np.array([patch, edges_2, edges_5_n])
+                                patches.append(final_patch)
+                                try:
+                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
+                                                                                             prew_trsh,
+                                                                                             class_number,
+                                                                                             i),
+                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                except:
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
+                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
+                                    exit(0)
+
+                                print('*---> patch {} added and saved '.format(i))
                                 extracted = True
-                            else:
-                                pass
-                        else:
-                            final_patch = np.array([patch, edges_2, edges_5_n])
-                            patches.append(final_patch)
-                            print('*---> patch {} added'.format(i))
-                            if self.augmentation_angle != 0:
-                                for j in range(1, self.augmentation_multiplier):
-                                    patches.append(self.rotate_patches(patch,
-                                                                       edges_2,
-                                                                       edges_5_n,
-                                                                       self.augmentation_angle * j))
-                                    print('*---> patch {} added'
-                                          ' with rotation of {} degrees '.format(i, self.augmentation_angle * j))
+                    counter += 1
 
-                            else:
-                                pass
-                            extracted = True
 
-                counter += 1
-
-        print('extraction done for class {}'.format(class_number))
+        print("\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format(class_number))
+        if self.augmentation_angle != 0:
+            for el_index in xrange(len(patches)):
+                for j in range(1, self.augmentation_multiplier):
+                    patches.append(rotate_patches(patches[el_index][0],
+                                                  patches[el_index][1],
+                                                  patches[el_index][2],
+                                                  self.augmentation_angle * j))
+                    print(('*---> patch {} added'
+                           ' with rotation of {} degrees '.format(el_index,
+                                                                  self.augmentation_angle * j)))
+        print ()
+        print ('augmentation done \n')
+        print('extraction for class {} complete\n'.format(class_number))
         return np.array(patches), labels
-
-    def count_center(self, edge, patch):
-        """
-        this function sum the value in the square of dimension 3x3
-        in the center of the patch
-        :param edge: the mask obtained with the filter
-        :param patch: the actual patch
-        :return:
-        """
-        sum = 0.0
-        for k in range(-1, 1):
-            for j in range(-1, 1):
-                sum += edge[len(patch) / 2 + k][len(patch) / 2 + j]
-
-        return sum
-
-    def rotate_patches(self, patch, edge_1, edge_2, rotating_angle):
-        return np.array([rotate(patch, rotating_angle, resize=False),
-                         rotate(edge_1, rotating_angle, resize=False),
-                         rotate(edge_2, rotating_angle, resize=False)])
 
 
 if __name__ == '__main__':
-    pass
+    path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    prova = PatchExtractor(40, path_to_images=path_images, augmentation_angle=90)
+    prova.make_training_patches()

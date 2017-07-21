@@ -1,11 +1,12 @@
 from __future__ import print_function
 from glob import glob
 from skimage import io
+from errno import EEXIST
+from os.path import isdir
+from os import makedirs
 import numpy as np
 import subprocess
 import progressbar
-import errno
-import os
 
 # np.random.seed(5)  # for reproducibility
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
@@ -18,9 +19,9 @@ def mkdir_p(path):
     :return:
     """
     try:
-        os.makedirs(path)
+        makedirs(path)
     except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
+        if exc.errno == EEXIST and isdir(path):
             pass
         else:
             raise

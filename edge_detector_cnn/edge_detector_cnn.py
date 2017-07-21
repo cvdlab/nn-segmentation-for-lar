@@ -363,9 +363,9 @@ if __name__ == '__main__':
     print(str(len(train_data)) + ' images to load')
 
     if type(result.model_to_load) is int:
-        patches = patch_extractor_edges.Patch_extractor(num_samples=result.training_datas,
-                                                        path_to_images=train_data,
-                                                        augmentation_angle=result.angle)
+        patches = patch_extractor_edges.PatchExtractor(num_samples=result.training_datas,
+                                                       path_to_images=train_data,
+                                                       augmentation_angle=result.angle)
         X, y = patches.make_training_patches()
         model = Edge_detector_cnn()
         model.fit_model(X, y)

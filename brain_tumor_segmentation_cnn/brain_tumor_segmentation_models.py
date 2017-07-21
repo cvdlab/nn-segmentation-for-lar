@@ -37,12 +37,30 @@ from keras.optimizers import SGD
 from keras.layers.advanced_activations import LeakyReLU
 from keras.initializers import glorot_normal
 from keras.models import model_from_json
-from brain_pipeline import mkdir_p
+from os.path import isdir
+from os import makedirs
+from errno import EEXIST
 import numpy as np
 import json
 import argparse
 import matplotlib.image as mpimg
+
 from patch_library import PatchLibrary
+
+
+def mkdir_p(path):
+    """
+    mkdir -p function, makes folder recursively if required
+    :param path:
+    :return:
+    """
+    try:
+        makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == EEXIST and isdir(path):
+            pass
+        else:
+            raise
 
 
 class Brain_tumor_segmentation_model(object):
@@ -335,6 +353,7 @@ class Brain_tumor_segmentation_model(object):
     def save_segmented_image(self, index, test_img, save=False):
         """
         Creates an image of original brain with segmentation overlay
+        :param index: index of image to save
         :param test_img: filepath to test image for segmentation, including file extension
         :param save: If true, shows output image. (defaults to False)
         :return: if show is True, shows image of segmentation results
