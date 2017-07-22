@@ -317,7 +317,7 @@ if __name__ == '__main__':
                         default=0.53,
                         dest='lap_trsh',
                         type=float,
-                        help=('set the treshold value to apply'
+                        help=('set the threshold value to apply'
                               ' for the laplacian filter in patch extraction,\n default=0.53'))
     parser.add_argument('-trshprew',
                         '-prew',
@@ -325,7 +325,7 @@ if __name__ == '__main__':
                         default=0.15,
                         dest='prew_trsh',
                         type=float,
-                        help=('set the treshold value to apply'
+                        help=('set the threshold value to apply'
                               ' for the prewitt filter in patch extraction,\n default=0.15'))
     parser.add_argument('-load',
                         '-l',
@@ -378,8 +378,8 @@ if __name__ == '__main__':
     if type(result.model_to_load) is int:
         patches = patch_extractor_edges.PatchExtractor(num_samples=result.training_datas,
                                                        path_to_images=train_data,
-                                                       lap_trsh=lap_trsh,
-                                                       prew_trsh=prew_trsh,
+                                                       lap_trsh=result.lap_trsh,
+                                                       prew_trsh=result.prew_trsh,
                                                        augmentation_angle=result.angle)
         X, y = patches.make_training_patches()
         model = Edge_detector_cnn()
