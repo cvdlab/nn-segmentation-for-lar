@@ -1,16 +1,59 @@
 # coding=utf-8
 from __future__ import print_function
-from skimage import io
-from skimage.filters.rank import entropy
-from skimage.morphology import disk
+from skimage.io import imsave, imread
 from skimage.transform import rotate
+from os.path import isdir
+from os import makedirs
+from os.path import basename
+from glob import glob
+from errno import EEXIST
 import numpy as np
 import random
-import os
 import progressbar
 
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 np.random.seed(5)
+
+
+def mkdir_p(path):
+    """
+    mkdir -p function, makes folder recursively if required
+    :type path: basestring
+    :param path:
+    :return:
+    """
+    try:
+        makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == EEXIST and isdir(path):
+            pass
+        else:
+            raise
+
+
+def rotate_patch(patch, angle):
+    """
+
+    :param patch: patch of size (4, 33, 33)
+    :param angle: says how much rotation must be applied
+    :return: rotate_patch
+    """
+
+    return [rotate(patch[0], angle, resize=False),
+            rotate(patch[1], angle, resize=False),
+            rotate(patch[2], angle, resize=False),
+            rotate(patch[3], angle, resize=False)]
+
+
+def get_right_order(filename):
+    """
+    gives a key_value function for a sorted extraction
+    :param filename:  path to image
+    :return:
+    """
+    last_part = filename.split('/')[len(filename.split('/')) - 1]
+    number_value = last_part[:-4]
+    return int(number_value)
 
 
 class PatchLibrary(object):
@@ -18,7 +61,7 @@ class PatchLibrary(object):
     class for creating patches and subpatches from training data to use as input for segmentation models.
     """
 
-    def __init__(self, patch_size, train_data, num_samples, augmentation_angle):
+    def __init__(self, patch_size=(33, 33), train_data='empty', num_samples=1000, augmentation_angle=0):
         """
 
         :param patch_size: tuple, size (in voxels) of patches to extract. Use (33,33) for sequential model
@@ -26,15 +69,16 @@ class PatchLibrary(object):
         :param num_samples: the number of patches to collect from training data.
         :param augmentation_angle: the angle used for flipping patches(producing more datas)
         """
-        # qui voglio un boolean data augmentation
-        # e un valore in gradi dell'angolo
+        if 'empty' in train_data:
+            print(" insert a path for path extraction")
+            exit(1)
         self.patch_size = patch_size
         if augmentation_angle % 360 != 0:
             self.augmentation_multiplier = int(float(360) / float(augmentation_angle))
         else:
             self.augmentation_multiplier = 1
 
-        self.num_samples = num_samples * self.augmentation_multiplier
+        self.num_samples = num_samples
         self.augmentation_angle = augmentation_angle % 360
 
         self.train_data = train_data
@@ -49,45 +93,88 @@ class PatchLibrary(object):
         :return: num_samples patches from class 'class_num' randomly selected.
         """
         h, w = self.patch_size[0], self.patch_size[1]
-        # qui voglio un if su data_augmentation
-        patches, labels = [], np.full(num_patches, class_num, 'float')
+        patches, labels = [], np.full(num_patches * self.augmentation_multiplier, class_num, 'float')
         print('Finding patches of class {}...'.format(class_num))
 
-        ct = 0
-        while ct < num_patches:
-            im_path = random.choice(self.train_data)
-            fn = os.path.basename(im_path)
-            try:
-                label = np.array(io.imread('Labels/' + fn[:-4] + 'L.png'))
-            except:
-                continue
+        full = False
+        start_value_extraction = 0
+        if isdir('patches/') and isdir('patches/class_{}/'.format(class_num)):
 
-            # resample if class_num not in selected slice
-            unique, counts = np.unique(label, return_counts=True)
-            labels_unique = dict(zip(unique, counts))
-            try:
-                if labels_unique[class_num] < 10:
-                    continue
-            except:
-                continue
+            # load all patches
+            # check if quantity is enough to work
+            path_to_patches = sorted(glob('./patches/class_{}/**'.format(class_num)),
+                                     key=get_right_order)
 
-            # select centerpix (p) and patch (p_ix)
-            img = io.imread(im_path).reshape(5, 216, 160)[:-1].astype('float')
-            p = random.choice(np.argwhere(label == class_num))
-            p_ix = (p[0] - (h / 2), p[0] + ((h + 1) / 2), p[1] - (w / 2), p[1] + ((w + 1) / 2))
-            patch = np.array([i[p_ix[0]:p_ix[1], p_ix[2]:p_ix[3]] for i in img])
-
-            # resample it patch is empty or too close to edge
-            if patch.shape != (4, h, w) or len(np.argwhere(patch == 0)) > (2 * h * w):
-                if class_num == 0 and patch.shape == (4, h, w):
-                    pass
+            for path_index in xrange(len(path_to_patches)):
+                if path_index < num_patches:
+                    patches.append((imread(path_to_patches[path_index],
+                                           astype=float).reshape(4,
+                                                                 self.patch_size[0],
+                                                                 self.patch_size[1])))
+                    print('*---> patch {} loaded and added '.format(path_index))
                 else:
+                    full = True
+                    break
+
+            if len(path_to_patches) < num_patches:
+                # change start_value_extraction
+                start_value_extraction = len(path_to_patches)
+            else:
+                full = True
+        else:
+            mkdir_p('patches/class_{}'.format(class_num))
+        if not full:
+            ct = start_value_extraction
+            while ct < num_patches:
+                print('searching for patch {}...'.format(ct))
+                im_path = random.choice(self.train_data)
+                fn = basename(im_path)
+                try:
+                    label = np.array(
+                        imread('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Labels/' + fn[:-4] + 'L.png'))
+                except:
                     continue
-            patches.append(patch)
-            for i in range(1, self.augmentation_multiplier):
-                patch = rotate(patch, self.augmentation_angle*i, resize=False)
+                # resample if class_num not in selected slice
+                unique, counts = np.unique(label, return_counts=True)
+                labels_unique = dict(zip(unique, counts))
+                try:
+                    if labels_unique[class_num] < 10:
+                        continue
+                except:
+                    continue
+                # select centerpix (p) and patch (p_ix)
+                img = imread(im_path).reshape(5, 216, 160)[:-1].astype('float')
+                p = random.choice(np.argwhere(label == class_num))
+                p_ix = (p[0] - (h / 2), p[0] + ((h + 1) / 2), p[1] - (w / 2), p[1] + ((w + 1) / 2))
+                patch = np.array([i[p_ix[0]:p_ix[1], p_ix[2]:p_ix[3]] for i in img])
+
+                # resample it patch is empty or too close to edge
+                if patch.shape != (4, h, w) or len(np.argwhere(patch == 0)) > (2 * h * w):
+                    if class_num == 0 and patch.shape == (4, h, w):
+                        pass
+                    else:
+                        continue
+
+                for slice_el in xrange(len(patch)):
+                    if np.max(patch[slice_el]) != 0:
+                        patch[slice_el] /= np.max(patch[slice_el])
+                imsave('./patches/class_{}/{}.png'.format(class_num,
+                                                          ct),
+                       (np.array(patch.reshape((4 * self.patch_size[0], self.patch_size[1])))))
                 patches.append(patch)
-            ct += self.augmentation_multiplier
+                print('*---> patch {} saved and added'.format(ct))
+                ct += 1
+
+        print()
+        if self.augmentation_angle != 0:
+            print('_*_*_*_ proceed with data augmentation  for class {} _*_*_*_'.format(class_num))
+            print()
+            for patch in patches:
+                for i in range(1, self.augmentation_multiplier):
+                    patch_rotate = rotate_patch(patch, self.augmentation_angle * i)
+                    patches.append(patch_rotate)
+            print('data augmentation complete')
+            print()
 
         return np.array(patches), labels
 
@@ -107,12 +194,11 @@ class PatchLibrary(object):
     #     return np.array(zip(np.array(plist[0]), np.array(plist[1]), np.array(plist[2]), np.array(plist[3])))
     #
 
-    def make_training_patches(self, entropy=False, balanced_classes=True, classes=None):
+    def make_training_patches(self, classes=None):
         """
         Creates datas(X) and labels(y) for training CNN
         :param entropy: if True, half of the patches are chosen based on highest entropy area.
         defaults to False.
-        :param balanced_classes:  if True, will produce an equal number of each class from the randomly chosen samples.
         :param classes: list of classes to sample from.
          Only change default if entropy is False and balanced_classes is True
         :return:
@@ -121,28 +207,23 @@ class PatchLibrary(object):
         """
         if classes is None:
             classes = [0, 1, 2, 3, 4]
-        if entropy is False:
-            if balanced_classes:
-                # o metto qui le ''interferenze'' prodotte da alpha o dopo ci devo pensare
-                per_class = self.num_samples / len(classes)
-                patches, labels = [], []
-                progress.currval = 0
-                for i in progress(xrange(len(classes))):
-                    p, l = self.find_patches(classes[i], per_class)
-                    # set 0 <= pix intensity <= 1
-                    for img_ix in xrange(len(p)):
-                        for slice in xrange(len(p[img_ix])):
-                            if np.max(p[img_ix][slice]) != 0:
-                                p[img_ix][slice] /= np.max(p[img_ix][slice])
-                    patches.append(p)
-                    labels.append(l)
-                return np.array(patches).reshape(self.num_samples, 4, self.h, self.w), np.array(labels).reshape(
-                    self.num_samples)
-
-        else:
-            print('Patches by entropy extraction... ')
-            self.patches_by_entropy(self.num_samples)
+            per_class = self.num_samples / len(classes)
+            patches, labels = [], []
+            progress.currval = 0
+            for i in progress(xrange(len(classes))):
+                p, l = self.find_patches(classes[i], per_class)
+                # for img_ix in xrange(len(p)):
+                #     for slice_el in xrange(len(p[img_ix])):
+                #         if np.max(p[img_ix][slice_el]) != 0:
+                #             p[img_ix][slice_el] /= np.max(p[img_ix][slice_el])
+                patches.append(p)
+                labels.append(l)
+            return np.array(patches).reshape(self.num_samples, 4, self.h, self.w), np.array(labels).reshape(
+                self.num_samples)
 
 
 if __name__ == '__main__':
-    pass
+    train_data = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    patch_extractor = PatchLibrary(train_data=train_data, num_samples=100)
+    patch_extractor.make_training_patches()
+    # pass

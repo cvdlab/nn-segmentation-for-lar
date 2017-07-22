@@ -284,7 +284,6 @@ class PatchExtractor(object):
                                 extracted = True
                     counter += 1
 
-
         print("\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format(class_number))
         if self.augmentation_angle != 0:
             for el_index in xrange(len(patches)):
@@ -296,8 +295,8 @@ class PatchExtractor(object):
                     print(('*---> patch {} added'
                            ' with rotation of {} degrees '.format(el_index,
                                                                   self.augmentation_angle * j)))
-        print ()
-        print ('augmentation done \n')
+        print()
+        print('augmentation done \n')
         print('extraction for class {} complete\n'.format(class_number))
         return np.array(patches), labels
 
