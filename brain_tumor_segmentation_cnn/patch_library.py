@@ -149,7 +149,7 @@ class PatchLibrary(object):
                 patch = np.array([i[p_ix[0]:p_ix[1], p_ix[2]:p_ix[3]] for i in img])
 
                 # resample it patch is empty or too close to edge
-                if patch.shape != (4, h, w) or len(np.argwhere(patch == 0)) > (2 * h * w):
+                if patch.shape != (4, h, w) or len(np.argwhere(patch == 0)) > (3 * h * w):
                     if class_num == 0 and patch.shape == (4, h, w):
                         pass
                     else:
@@ -212,10 +212,6 @@ class PatchLibrary(object):
             progress.currval = 0
             for i in progress(xrange(len(classes))):
                 p, l = self.find_patches(classes[i], per_class)
-                # for img_ix in xrange(len(p)):
-                #     for slice_el in xrange(len(p[img_ix])):
-                #         if np.max(p[img_ix][slice_el]) != 0:
-                #             p[img_ix][slice_el] /= np.max(p[img_ix][slice_el])
                 patches.append(p)
                 labels.append(l)
             return np.array(patches).reshape(self.num_samples, 4, self.h, self.w), np.array(labels).reshape(
