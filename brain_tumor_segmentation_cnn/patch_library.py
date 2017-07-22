@@ -11,6 +11,14 @@ import numpy as np
 import random
 import progressbar
 
+__author__ = "Cesare Catavitello"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Cesare Catavitello"
+__email__ = "cesarec88@gmail.com"
+__status__ = "Production"
+
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 np.random.seed(5)
 

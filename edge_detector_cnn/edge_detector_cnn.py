@@ -1,20 +1,6 @@
 """
 
-
-                                ********************************************************
-                                *                                                      *
-                                *  realized by Cesare Catavitello                      *
-                                *                                                      *
-                                *  for any question email me at cesarec88@gmail.com    *
-                                *                                                      *
-                                ********************************************************
-
-
-
-=============================
-
-
-=============================
+Description soon
 
 """
 
@@ -41,6 +27,13 @@ import numpy as np
 import argparse
 import json
 
+__author__ = "Cesare Catavitello"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Cesare Catavitello"
+__email__ = "cesarec88@gmail.com"
+__status__ = "Production"
 
 def mkdir_p(path):
     """

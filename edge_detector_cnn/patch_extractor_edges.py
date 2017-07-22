@@ -1,18 +1,5 @@
 """
 
-
-                                ********************************************************
-                                *                                                      *
-                                *  realized by Cesare Catavitello                      *
-                                *                                                      *
-                                *  for any question email me at cesarec88@gmail.com    *
-                                *                                                      *
-                                ********************************************************
-
-
-
-=============================
-
 This code extract and catalog all patches to give to the cnn
 to achieve the edge of an image through the following criteria:
 0 - non edge
@@ -20,9 +7,6 @@ to achieve the edge of an image through the following criteria:
 
 one patch is  marked as edge when passing through 2  filters(prewitt and laplacian) the  count_center function
 returns a value above a certain threshold
-
-
-=============================
 
 """
 
@@ -39,6 +23,13 @@ from os import makedirs
 from glob import glob
 import numpy as np
 
+__author__ = "Cesare Catavitello"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Cesare Catavitello"
+__email__ = "cesarec88@gmail.com"
+__status__ = "Production"
 
 def mkdir_p(path):
     """

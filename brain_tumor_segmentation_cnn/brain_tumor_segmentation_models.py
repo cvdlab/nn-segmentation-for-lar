@@ -1,25 +1,10 @@
 """
 
-
-                                ********************************************************
-                                *                                                      *
-                                *  realized by Cesare Catavitello                      *
-                                *                                                      *
-                                *  for any question email me at cesarec88@gmail.com    *
-                                *                                                      *
-                                ********************************************************
-
-
-
-=============================
-
 The following code try to implement the CNN model described in
 (S. Pereira et al.)  ( http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7426413&isnumber=7463083)
 It consist mainly of a class for compiling/loading, fitting and saving two kind of models,
 and saving the processed group of images used for test.
 The segmentation is described in accordance to the rules of the Brats Contest.
-
-=============================
 
 """
 
@@ -44,8 +29,15 @@ import numpy as np
 import json
 import argparse
 import matplotlib.image as mpimg
-
 from patch_library import PatchLibrary
+
+__author__ = "Cesare Catavitello"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Cesare Catavitello"
+__email__ = "cesarec88@gmail.com"
+__status__ = "Production"
 
 
 def mkdir_p(path):
