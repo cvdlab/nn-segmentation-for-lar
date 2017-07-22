@@ -18,7 +18,6 @@ from os.path import isdir
 from errno import EEXIST
 
 __author__ = "Cesare Catavitello"
-
 __license__ = "MIT"
 __version__ = "1.0.1"
 __maintainer__ = "Cesare Catavitello"
