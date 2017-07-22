@@ -161,9 +161,15 @@ Applyng then the canny filter as post processing i got the following result:
                         
 	'-load','-l',		load the model already trained, as default no load happen. insert model name as: 'model_name' (string value expected)
 	
+	'-trshlap','-lap',	set the treshold value to apply
+                              		'for the laplacian filter in patch extraction,\n default=0.53 (exected a value between 0 and 1)
+                              	
+    '-trshprew','-prew',	set the treshold value to apply'
+                              		' for the prewitt filter in patch extraction,\n default=0.15 (exected a value between 0 and 1)
+	
 	'-save', '-s',	save the trained model in the specified path, as  default no save happen( the name and all it's specification happens automatically) (no value expected)
 	
-	-augmentation','-a',	set data augmentation option through the specified rotating angle express values in degrees, default=0')
+	-augmentation','-a',	set data augmentation option through the specified rotating angle express values in degrees, default=0'
                              
 	'-canny','-c',	add canny filter to segmented image ( concatenate '-test' option before using it)
 	'-both','-b',		 save both canny filter to segmented image  and segmented image (use -test option before using it)

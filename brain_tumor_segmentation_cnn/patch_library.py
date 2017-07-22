@@ -139,7 +139,7 @@ class PatchLibrary(object):
                 fn = basename(im_path)
                 try:
                     label = np.array(
-                        imread('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Labels/' + fn[:-4] + 'L.png'))
+                        imread('Labels/' + fn[:-4] + 'L.png'))
                 except:
                     continue
                 # resample if class_num not in selected slice
@@ -227,7 +227,7 @@ class PatchLibrary(object):
 
 
 if __name__ == '__main__':
-    train_data = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    patch_extractor = PatchLibrary(train_data=train_data, num_samples=100)
-    patch_extractor.make_training_patches()
-    # pass
+    # train_data = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    # patch_extractor = PatchLibrary(train_data=train_data, num_samples=100)
+    # patch_extractor.make_training_patches()
+    pass

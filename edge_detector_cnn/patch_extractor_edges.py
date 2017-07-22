@@ -31,6 +31,7 @@ __maintainer__ = "Cesare Catavitello"
 __email__ = "cesarec88@gmail.com"
 __status__ = "Production"
 
+
 def mkdir_p(path):
     """
     mkdir -p function, makes folder recursively if required
@@ -82,23 +83,30 @@ def rotate_patches(patch, edge_1, edge_2, rotating_angle):
 
 
 class PatchExtractor(object):
-    def __init__(self, num_samples=None, path_to_images=None, patch_size=(23, 23), augmentation_angle=0):
+    def __init__(self, num_samples=None, path_to_images=None, lap_trsh=None, prew_trsh=None, patch_size=(23, 23),
+                 augmentation_angle=0):
         """
         load and store all necessary information to achieve the patch extraction
         :param num_samples: number of patches required
         :param path_to_images: path to the folder containing all '.png.' files
+        :param lap_trsh: treshold value to apply for patch extraction for what concern laplacian filter
+        :param prew_trsh: treshold value to apply for patch extraction for what concern prewitt filter
         :param patch_size: dimensions for each patch
         :param augmentation_angle: angle necessary to operate the increase of the number of patches
         """
         print('*' * 50)
         print('Starting patch extraction...')
+        if (lap_trsh is None) or (prew_trsh is None):
+            print(" missing treshold value, impossible to proceed")
+            exit(1)
         if path_to_images is None:
             ValueError('no destination file')
             exit(1)
         if num_samples is None:
             ValueError('specify the number of patches to extract and reload class')
             exit(1)
-
+        self.laplacian_treshold = lap_trsh
+        self.prewitt_treshold = prew_trsh
         self.augmentation_angle = augmentation_angle % 360
         self.images = np.array([rgb2gray(imread(path_to_images[el]).astype('float').reshape(5, 216, 160)[-2])
                                 for el in range(len(path_to_images))])
@@ -145,21 +153,19 @@ class PatchExtractor(object):
         ten_percent_black = 0
         ten_percent_black_value = int(float(per_class) * 0.0001)
 
-        lap_trsh = 0.53
-        prew_trsh = 0.15
         start_value_extraction = 0
         full = False
 
-        if isdir('patches/') and isdir('patches/lap_{}_prew_{}/'.format(lap_trsh,
-                                                                        prew_trsh)) and isdir(
-            'patches/lap_{}_prew_{}/class_{}/'.format(lap_trsh,
-                                                      prew_trsh,
+        if isdir('patches/') and isdir('patches/lap_{}_prew_{}/'.format(self.laplacian_treshold,
+                                                                        self.prewitt_treshold)) and isdir(
+            'patches/lap_{}_prew_{}/class_{}/'.format(self.laplacian_treshold,
+                                                      self.prewitt_treshold,
                                                       class_number)):
 
             # load all patches
             # check if quantity is enough to work
-            path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**'.format(lap_trsh,
-                                                                                        prew_trsh,
+            path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**'.format(self.laplacian_treshold,
+                                                                                        self.prewitt_treshold,
                                                                                         class_number)),
                                      key=get_right_order)
 
@@ -180,8 +186,8 @@ class PatchExtractor(object):
             else:
                 full = True
         else:
-            mkdir_p('patches/lap_{}_prew_{}/class_{}'.format(lap_trsh,
-                                                             prew_trsh,
+            mkdir_p('patches/lap_{}_prew_{}/class_{}'.format(self.laplacian_treshold,
+                                                             self.prewitt_treshold,
                                                              class_number))
         if not full:
             for i in range(start_value_extraction, per_class):
@@ -211,14 +217,14 @@ class PatchExtractor(object):
                     if class_number == 1:
                         first_cond = not np.array_equal(patch, np.zeros(patch.shape))
                         if first_cond:
-                            second_cond = (edges_5_n[len(patch) / 2, len(patch) / 2] > lap_trsh or
-                                           count_center(edges_2, patch) > prew_trsh)
+                            second_cond = (edges_5_n[len(patch) / 2, len(patch) / 2] > self.laplacian_treshold or
+                                           count_center(edges_2, patch) > self.prewitt_treshold)
                             if second_cond:
                                 final_patch = np.array([patch, edges_2, edges_5_n])
                                 patches.append(final_patch)
                                 try:
-                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
-                                                                                             prew_trsh,
+                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(self.laplacian_treshold,
+                                                                                             self.prewitt_treshold,
                                                                                              class_number,
                                                                                              i),
                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
@@ -232,19 +238,20 @@ class PatchExtractor(object):
                                 extracted = True
 
                     elif class_number == 0:
-                        first_cond = edges_5_n[len(patch) / 2, len(patch) / 2] <= lap_trsh and \
-                                     count_center(edges_2, patch) <= prew_trsh
+                        first_cond = edges_5_n[len(patch) / 2, len(patch) / 2] <= self.laplacian_treshold and \
+                                     count_center(edges_2, patch) <= self.prewitt_treshold
                         if first_cond:
                             if np.array_equal(patch, np.zeros(patch.shape)):
                                 if ten_percent_black < ten_percent_black_value:
                                     final_patch = np.array([patch, edges_2, edges_5_n])
                                     patches.append(final_patch)
                                     try:
-                                        imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
-                                                                                                 prew_trsh,
-                                                                                                 class_number,
-                                                                                                 i),
-                                               final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                        imsave(
+                                            './patches/lap_{}_prew_{}/class_{}/{}.png'.format(self.laplacian_treshold,
+                                                                                              self.prewitt_treshold,
+                                                                                              class_number,
+                                                                                              i),
+                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
                                     except:
                                         print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
                                         print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
@@ -260,8 +267,8 @@ class PatchExtractor(object):
                                 final_patch = np.array([patch, edges_2, edges_5_n])
                                 patches.append(final_patch)
                                 try:
-                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(lap_trsh,
-                                                                                             prew_trsh,
+                                    imsave('./patches/lap_{}_prew_{}/class_{}/{}.png'.format(self.laplacian_treshold,
+                                                                                             self.prewitt_treshold,
                                                                                              class_number,
                                                                                              i),
                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
@@ -293,6 +300,7 @@ class PatchExtractor(object):
 
 
 if __name__ == '__main__':
-    path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    prova = PatchExtractor(40, path_to_images=path_images, augmentation_angle=90)
-    prova.make_training_patches()
+    # path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    # prova = PatchExtractor(40, path_to_images=path_images, augmentation_angle=90)
+    # prova.make_training_patches()
+    pass

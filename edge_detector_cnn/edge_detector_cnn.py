@@ -35,6 +35,7 @@ __maintainer__ = "Cesare Catavitello"
 __email__ = "cesarec88@gmail.com"
 __status__ = "Production"
 
+
 def mkdir_p(path):
     """
     mkdir -p function, makes folder recursively if required
@@ -177,7 +178,7 @@ class Edge_detector_cnn(object):
             sliced_image /= sliced_image.max()
 
         print('\n', 'image size : {}'.format(sliced_image.shape))
-        color = [121./256, 31./256, 200./256]  # blue as choice
+        color = [121. / 256, 31. / 256, 200. / 256]  # blue as choice
 
         print(sliced_image.shape)
 
@@ -298,6 +299,9 @@ class Edge_detector_cnn(object):
 
 if __name__ == '__main__':
 
+    lap_trsh = 0.53
+    prew_trsh = 0.15
+
     parser = argparse.ArgumentParser(description='Commands to istanciate or load the convolutional neural network'
                                                  'for edge detection')
     parser.add_argument('-train',
@@ -307,6 +311,22 @@ if __name__ == '__main__':
                         dest='training_datas',
                         type=int,
                         help='set the number of data to train with,\n default=1000')
+    parser.add_argument('-trshlap',
+                        '-lap',
+                        action='store',
+                        default=0.53,
+                        dest='lap_trsh',
+                        type=float,
+                        help=('set the treshold value to apply'
+                              ' for the laplacian filter in patch extraction,\n default=0.53'))
+    parser.add_argument('-trshprew',
+                        '-prew',
+                        action='store',
+                        default=0.15,
+                        dest='prew_trsh',
+                        type=float,
+                        help=('set the treshold value to apply'
+                              ' for the prewitt filter in patch extraction,\n default=0.15'))
     parser.add_argument('-load',
                         '-l',
                         action='store',
@@ -358,6 +378,8 @@ if __name__ == '__main__':
     if type(result.model_to_load) is int:
         patches = patch_extractor_edges.PatchExtractor(num_samples=result.training_datas,
                                                        path_to_images=train_data,
+                                                       lap_trsh=lap_trsh,
+                                                       prew_trsh=prew_trsh,
                                                        augmentation_angle=result.angle)
         X, y = patches.make_training_patches()
         model = Edge_detector_cnn()
