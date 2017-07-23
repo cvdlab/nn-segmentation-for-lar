@@ -164,17 +164,17 @@ class PatchExtractor(object):
 
             # load all patches
             # check if quantity is enough to work
-            path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**'.format(self.laplacian_threshold,
+            path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**.png'.format(self.laplacian_threshold,
                                                                                         self.prewitt_threshold,
                                                                                         class_number)),
                                      key=get_right_order)
 
             for path_index in xrange(len(path_to_patches)):
                 if path_index < per_class:
-                    patches.append(imread(path_to_patches[path_index],
-                                          astype=float).reshape(3,
-                                                                self.patch_size[0],
-                                                                self.patch_size[1]))
+                    patches.append(rgb2gray(imread(path_to_patches[path_index],
+                                                   astype=float)).reshape(3,
+                                                                          self.patch_size[0],
+                                                                          self.patch_size[1]))
                     print('*---> patch {} loaded and added '.format(path_index))
                 else:
                     full = True
@@ -283,16 +283,49 @@ class PatchExtractor(object):
                     counter += 1
 
         print("\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format(class_number))
+
         if self.augmentation_angle != 0:
+            if isdir('./patches/lap_{}_prew_{}/class_{}/rotations'.format(self.laplacian_threshold,
+                                                                          self.prewitt_threshold,
+                                                                          class_number)):
+                print("rotations folder present ")
+            else:
+                mkdir_p('./patches/lap_{}_prew_{}/class_{}/rotations'.format(self.laplacian_threshold,
+                                                                             self.prewitt_threshold,
+                                                                             class_number))
+                print("rotations folder created")
             for el_index in xrange(len(patches)):
                 for j in range(1, self.augmentation_multiplier):
-                    patches.append(rotate_patches(patches[el_index][0],
-                                                  patches[el_index][1],
-                                                  patches[el_index][2],
-                                                  self.augmentation_angle * j))
-                    print(('*---> patch {} added'
-                           ' with rotation of {} degrees '.format(el_index,
-                                                                  self.augmentation_angle * j)))
+                    try:
+                        patch_rotated = rgb2gray(imread(
+                            ('./patches/lap_{}_prew_{}/class_{}/'
+                             'rotations/{}_{}.png'.format(self.laplacian_threshold,
+                                                          self.prewitt_threshold,
+                                                          class_number,
+                                                          el_index,
+                                                          self.augmentation_angle * j)))).reshape(3,
+                                                                                                  self.patch_size[0],
+                                                                                                  self.patch_size[1])
+                        patches.append(patch_rotated)
+                        print('*---> patch {} loaded and added '
+                              'with rotation of {} degrees'.format(el_index,
+                                                                   self.augmentation_angle * j))
+                    except:
+                        final_rotated_patch = rotate_patches(patches[el_index][0],
+                                                             patches[el_index][1],
+                                                             patches[el_index][2],
+                                                             self.augmentation_angle * j)
+                        patches.append(final_rotated_patch)
+                        imsave('./patches/lap_{}_prew_{}/class_{}/'
+                               'rotations/{}_{}.png'.format(self.laplacian_threshold,
+                                                            self.prewitt_threshold,
+                                                            class_number,
+                                                            el_index,
+                                                            self.augmentation_angle * j),
+                               final_rotated_patch.reshape(3 * self.patch_size[0], self.patch_size[1]))
+                        print(('*---> patch {} saved and added '
+                               'with rotation of {} degrees '.format(el_index,
+                                                                      self.augmentation_angle * j)))
         print()
         print('augmentation done \n')
         print('extraction for class {} complete\n'.format(class_number))
@@ -300,7 +333,7 @@ class PatchExtractor(object):
 
 
 if __name__ == '__main__':
-    # path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # prova = PatchExtractor(40, path_to_images=path_images, augmentation_angle=90)
-    # prova.make_training_patches()
+    path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    prova = PatchExtractor(100, prew_trsh=0.14, lap_trsh=0.54, path_to_images=path_images, augmentation_angle=10)
+    prova.make_training_patches()
     pass

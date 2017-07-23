@@ -139,7 +139,7 @@ class Edge_detector_cnn(object):
                   momentum=0.9,
                   nesterov=True)
         print(sgd)
-        EarlyStopping(monitor='val_loss', min_delta=0.002, patience=2, verbose=1, mode='auto')
+        EarlyStopping(monitor='val_loss', min_delta=0.004, patience=2, verbose=1, mode='auto')
 
         self.model.compile(optimizer=sgd,
                            loss='categorical_crossentropy',
@@ -298,9 +298,6 @@ class Edge_detector_cnn(object):
 
 
 if __name__ == '__main__':
-
-    lap_trsh = 0.53
-    prew_trsh = 0.15
 
     parser = argparse.ArgumentParser(description='Commands to istanciate or load the convolutional neural network'
                                                  'for edge detection')
