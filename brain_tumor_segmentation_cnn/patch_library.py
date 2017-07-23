@@ -2,6 +2,7 @@
 from __future__ import print_function
 from skimage.io import imsave, imread
 from skimage.transform import rotate
+from skimage.color import rgb2gray
 from os.path import isdir
 from os import makedirs
 from os.path import basename
@@ -47,10 +48,10 @@ def rotate_patch(patch, angle):
     :return: rotate_patch
     """
 
-    return [rotate(patch[0], angle, resize=False),
-            rotate(patch[1], angle, resize=False),
-            rotate(patch[2], angle, resize=False),
-            rotate(patch[3], angle, resize=False)]
+    return np.array([rotate(patch[0], angle, resize=False),
+                     rotate(patch[1], angle, resize=False),
+                     rotate(patch[2], angle, resize=False),
+                     rotate(patch[3], angle, resize=False)])
 
 
 def get_right_order(filename):
@@ -110,15 +111,21 @@ class PatchLibrary(object):
 
             # load all patches
             # check if quantity is enough to work
-            path_to_patches = sorted(glob('./patches/class_{}/**'.format(class_num)),
+            path_to_patches = sorted(glob('./patches/class_{}/**.png'.format(class_num)),
                                      key=get_right_order)
 
             for path_index in xrange(len(path_to_patches)):
                 if path_index < num_patches:
-                    patches.append((imread(path_to_patches[path_index],
-                                           astype=float).reshape(4,
-                                                                 self.patch_size[0],
-                                                                 self.patch_size[1])))
+                    patch_to_add = rgb2gray(imread(path_to_patches[path_index],
+                                                   dtype=float)).reshape(4,
+                                                                         self.patch_size[0],
+                                                                         self.patch_size[1])
+
+                    for el in xrange(len(patch_to_add)):
+                        if np.max(patch_to_add[el]) > 1:
+                            patch_to_add[el] = patch_to_add[el] / np.max(patch_to_add[el])
+
+                    patches.append(patch_to_add)
                     print('*---> patch {} loaded and added '.format(path_index))
                 else:
                     full = True
@@ -139,7 +146,7 @@ class PatchLibrary(object):
                 fn = basename(im_path)
                 try:
                     label = np.array(
-                        imread('Labels/' + fn[:-4] + 'L.png'))
+                        imread('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Labels/' + fn[:-4] + 'L.png'))
                 except:
                     continue
                 # resample if class_num not in selected slice
@@ -156,7 +163,7 @@ class PatchLibrary(object):
                 p_ix = (p[0] - (h / 2), p[0] + ((h + 1) / 2), p[1] - (w / 2), p[1] + ((w + 1) / 2))
                 patch = np.array([i[p_ix[0]:p_ix[1], p_ix[2]:p_ix[3]] for i in img])
 
-                # resample it patch is empty or too close to edge
+                # resample if patch is empty or too close to edge
                 if patch.shape != (4, h, w) or len(np.argwhere(patch == 0)) > (3 * h * w):
                     if class_num == 0 and patch.shape == (4, h, w):
                         pass
@@ -174,15 +181,68 @@ class PatchLibrary(object):
                 ct += 1
 
         print()
+
+        for i in xrange(len(patches)):
+            print('*' * 20)
+            print('*' * 20)
+
+            print(patches[i][0].max())
+            print(patches[i][0].min())
+            print('*' * 20)
+            print('*' * 20)
+
+
         if self.augmentation_angle != 0:
             print('_*_*_*_ proceed with data augmentation  for class {} _*_*_*_'.format(class_num))
             print()
-            for patch in patches:
-                for i in range(1, self.augmentation_multiplier):
-                    patch_rotate = rotate_patch(patch, self.augmentation_angle * i)
-                    patches.append(patch_rotate)
-            print('data augmentation complete')
+
+            if isdir('./patches/class_{}/rotations'.format(
+                    class_num)):
+                print("rotations folder present ")
+            else:
+                mkdir_p('./patches/class_{}/rotations'.format(
+                    class_num))
+                print("rotations folder created")
+            for el_index in xrange(len(patches)):
+                for j in range(1, self.augmentation_multiplier):
+                    try:
+                        patch_rotated = np.array(rgb2gray(imread('./patches/class_{}/'
+                                                                 'rotations/{}_{}.png'.format(class_num,
+                                                                                              el_index,
+                                                                                              self.augmentation_angle * j)),
+                                                          dtype=float)).reshape(4,
+                                                                                self.patch_size[0],
+                                                                                self.patch_size[1])
+
+                        for slice_el in xrange(len(patch_rotated)):
+                            if np.max(patch_rotated[slice_el]) > 1:
+                                patch_rotated[slice_el] /= np.max(patch_rotated[slice_el])
+
+                        patches.append(patch_rotated)
+                        print('*---> patch {} loaded and added '
+                              'with rotation of {} degrees'.format(el_index,
+                                                                   self.augmentation_angle * j))
+                    except:
+
+                        final_rotated_patch = rotate_patch(np.array(patches[el_index]), self.augmentation_angle * j)
+                        patches.append(final_rotated_patch)
+                        imsave('./patches/class_{}/'
+                               'rotations/{}_{}.png'.format(class_num,
+                                                            el_index,
+                                                            self.augmentation_angle * j),
+                               np.array(final_rotated_patch).reshape(4 * self.patch_size[0], self.patch_size[1]))
+                        print(('*---> patch {} saved and added '
+                               'with rotation of {} degrees '.format(el_index,
+                                                                     self.augmentation_angle * j)))
             print()
+            print('augmentation done \n')
+
+            # for patch in patches:
+            #     for i in range(1, self.augmentation_multiplier):
+            #         patch_rotate = rotate_patch(patch, self.augmentation_angle * i)
+            #         patches.append(patch_rotate)
+            # print('data augmentation complete')
+            # print()
 
         return np.array(patches), labels
 
@@ -222,12 +282,14 @@ class PatchLibrary(object):
                 p, l = self.find_patches(classes[i], per_class)
                 patches.append(p)
                 labels.append(l)
-            return np.array(patches).reshape(self.num_samples, 4, self.h, self.w), np.array(labels).reshape(
-                self.num_samples)
+            return np.array(patches).reshape(self.num_samples * self.augmentation_multiplier, 4, self.h,
+                                             self.w), np.array(labels).reshape(
+                self.num_samples * self.augmentation_multiplier)
 
 
 if __name__ == '__main__':
     # train_data = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # patch_extractor = PatchLibrary(train_data=train_data, num_samples=100)
-    # patch_extractor.make_training_patches()
+    # patch_extractor = PatchLibrary(train_data=train_data, num_samples=110, augmentation_angle=10)
+    # patches, labels = patch_extractor.make_training_patches()
+
     pass

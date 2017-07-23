@@ -174,11 +174,15 @@ class PatchExtractor(object):
 
             for path_index in xrange(len(path_to_patches)):
                 if path_index < per_class:
-                    patches.append(np.array(rgb2gray(imread(path_to_patches[path_index],
-                                                            astype=float)).reshape(3,
+                    patch_to_load = np.array(rgb2gray(imread(path_to_patches[path_index],
+                                                             dtype=float)).reshape(3,
                                                                                    self.patch_size[0],
                                                                                    self.patch_size[1])).astype(
-                        float) / (256 * 256))
+                        float)
+                    patches.append(patch_to_load)
+                    for el in xrange(len(patch_to_load)):
+                        if np.max(patch_to_load[el]) > 1:
+                            patch_to_load[el] /= np.max(patch_to_load[el])
                     print('*---> patch {} loaded and added '.format(path_index))
                 else:
                     full = True
@@ -208,13 +212,14 @@ class PatchExtractor(object):
                         patches_from_random = np.array(
                             extract_patches_2d(random_image, self.patch_size, per_class))
                         counter = 0
-                    patch_1 = np.array(patches_from_random[randint(0, per_class - 1)].astype(float))
-                    patch = patch_1 / (256 * 256)
+                    patch = np.array(patches_from_random[randint(0, per_class - 1)].astype(float))
+                    if patch.max() > 1:
+                        patch /= patch.max()
                     edges_2 = prewitt(patch)
                     edges_5 = laplace(patch)
                     if edges_5.max() > 1 or edges_5.min() < -1:
                         max_value = max(edges_5.max(), -1 * edges_5.min())
-                        edges_5_n = (edges_5) / max_value
+                        edges_5_n = edges_5 / max_value
                     else:
                         edges_5_n = edges_5
 
@@ -231,7 +236,8 @@ class PatchExtractor(object):
                                                                                              self.prewitt_threshold,
                                                                                              class_number,
                                                                                              i),
-                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                           dtype=float)
                                 except:
                                     print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
                                     print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
@@ -255,7 +261,8 @@ class PatchExtractor(object):
                                                                                               self.prewitt_threshold,
                                                                                               class_number,
                                                                                               i),
-                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                            dtype=float)
                                     except:
                                         print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
                                         print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
@@ -275,7 +282,8 @@ class PatchExtractor(object):
                                                                                              self.prewitt_threshold,
                                                                                              class_number,
                                                                                              i),
-                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])))
+                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                           dtype=float)
                                 except:
                                     print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
                                     print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
@@ -328,7 +336,8 @@ class PatchExtractor(object):
                                                             class_number,
                                                             el_index,
                                                             self.augmentation_angle * j),
-                               final_rotated_patch.reshape(3 * self.patch_size[0], self.patch_size[1]))
+                               final_rotated_patch.reshape(3 * self.patch_size[0], self.patch_size[1]),
+                               dtype=float)
                         print(('*---> patch {} saved and added '
                                'with rotation of {} degrees '.format(el_index,
                                                                      self.augmentation_angle * j)))
@@ -340,6 +349,9 @@ class PatchExtractor(object):
 
 if __name__ == '__main__':
     # path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # prova = PatchExtractor(10, prew_trsh=0.2, lap_trsh=0.6, path_to_images=path_images)
+    # prova = PatchExtractor(30, prew_trsh=0.2, lap_trsh=0.6, augmentation_angle=30, path_to_images=path_images)
     # patches, labels = prova.make_training_patches()
+
+
+
     pass
