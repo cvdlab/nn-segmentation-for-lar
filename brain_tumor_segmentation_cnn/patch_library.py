@@ -146,7 +146,7 @@ class PatchLibrary(object):
                 fn = basename(im_path)
                 try:
                     label = np.array(
-                        imread('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Labels/' + fn[:-4] + 'L.png'))
+                        imread('Labels/' + fn[:-4] + 'L.png'))
                 except:
                     continue
                 # resample if class_num not in selected slice
