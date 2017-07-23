@@ -168,16 +168,16 @@ class PatchExtractor(object):
             # load all patches
             # check if quantity is enough to work
             path_to_patches = sorted(glob('./patches/lap_{}_prew_{}/class_{}/**.png'.format(self.laplacian_threshold,
-                                                                                        self.prewitt_threshold,
-                                                                                        class_number)),
+                                                                                            self.prewitt_threshold,
+                                                                                            class_number)),
                                      key=get_right_order)
 
             for path_index in xrange(len(path_to_patches)):
                 if path_index < per_class:
-                    patches.append(rgb2gray(imread(path_to_patches[path_index],
-                                                   astype=float)).reshape(3,
-                                                                          self.patch_size[0],
-                                                                          self.patch_size[1]))
+                    patches.append(np.array(rgb2gray(imread(path_to_patches[path_index],
+                                                            astype=float)).reshape(3,
+                                                                                   self.patch_size[0],
+                                                                                   self.patch_size[1])).astype(float) / (256 * 256))
                     print('*---> patch {} loaded and added '.format(path_index))
                 else:
                     full = True
@@ -300,7 +300,7 @@ class PatchExtractor(object):
             for el_index in xrange(len(patches)):
                 for j in range(1, self.augmentation_multiplier):
                     try:
-                        patch_rotated = rgb2gray(imread(
+                        patch_rotated = np.array(rgb2gray(imread(
                             ('./patches/lap_{}_prew_{}/class_{}/'
                              'rotations/{}_{}.png'.format(self.laplacian_threshold,
                                                           self.prewitt_threshold,
@@ -308,7 +308,8 @@ class PatchExtractor(object):
                                                           el_index,
                                                           self.augmentation_angle * j)))).reshape(3,
                                                                                                   self.patch_size[0],
-                                                                                                  self.patch_size[1])
+                                                                                                  self.patch_size[1]
+                                                                                                  )).astype(float) / (256 * 256)
                         patches.append(patch_rotated)
                         print('*---> patch {} loaded and added '
                               'with rotation of {} degrees'.format(el_index,
@@ -328,7 +329,7 @@ class PatchExtractor(object):
                                final_rotated_patch.reshape(3 * self.patch_size[0], self.patch_size[1]))
                         print(('*---> patch {} saved and added '
                                'with rotation of {} degrees '.format(el_index,
-                                                                      self.augmentation_angle * j)))
+                                                                     self.augmentation_angle * j)))
         print()
         print('augmentation done \n')
         print('extraction for class {} complete\n'.format(class_number))
@@ -337,6 +338,9 @@ class PatchExtractor(object):
 
 if __name__ == '__main__':
     path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    prova = PatchExtractor(100, prew_trsh=0.14, lap_trsh=0.54, path_to_images=path_images, augmentation_angle=10)
-    prova.make_training_patches()
+    prova = PatchExtractor(10, prew_trsh=0.2, lap_trsh=0.6, path_to_images=path_images, augmentation_angle=10)
+    patches, labels = prova.make_training_patches()
+
+    print(patches[0][0].shape)
+    print(patches[0][0])
     pass
