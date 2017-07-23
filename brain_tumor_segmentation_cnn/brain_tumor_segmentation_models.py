@@ -20,6 +20,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Conv2D, MaxPool2D, Dropout, Activation, Flatten
 from keras.optimizers import SGD
 from keras.layers.advanced_activations import LeakyReLU
+from keras.callbacks import EarlyStopping
 from keras.initializers import glorot_normal
 from keras.models import model_from_json
 from os.path import isdir
@@ -279,7 +280,7 @@ class Brain_tumor_segmentation_model(object):
 
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
-        # es = EarlyStopping(monitor='val_loss', patience=2, verbose=1, mode='auto')
+        EarlyStopping(monitor='val_loss', patience=2, mode='auto')
 
         if self.is_hgg:
             n_epochs = 20

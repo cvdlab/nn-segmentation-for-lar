@@ -127,8 +127,7 @@ class Edge_detector_cnn(object):
 
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
-        # es = EarlyStopping(monitor='val_loss', patience=2, verbose=1, mode='auto')
-
+        EarlyStopping(monitor='val_loss', min_delta=0, patience=2, mode='auto')
         n_epochs = 30
         self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=160, verbose=1)
 
@@ -139,7 +138,6 @@ class Edge_detector_cnn(object):
                   momentum=0.9,
                   nesterov=True)
         print(sgd)
-        EarlyStopping(monitor='val_loss', min_delta=0.004, patience=2, verbose=1, mode='auto')
 
         self.model.compile(optimizer=sgd,
                            loss='categorical_crossentropy',
