@@ -280,7 +280,7 @@ class Brain_tumor_segmentation_model(object):
 
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
-        EarlyStopping(monitor='val_loss', patience=2, mode='auto')
+        # EarlyStopping(monitor='val_loss', patience=2, mode='auto')
 
         if self.is_hgg:
             n_epochs = 20

@@ -127,9 +127,11 @@ class Edge_detector_cnn(object):
 
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
-        EarlyStopping(monitor='val_loss', min_delta=0, patience=2, mode='auto')
-        n_epochs = 30
-        self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=160, verbose=1)
+
+        # es = EarlyStopping(monitor='val_loss', patience=2, mode='auto')
+
+        n_epochs = 10
+        self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=300, verbose=1)
 
     def _compile_model(self):
         # default decay = 1e-6, lr = 0.01 maybe 1e-2 for linear decay?

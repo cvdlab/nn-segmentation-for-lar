@@ -197,22 +197,24 @@ class PatchExtractor(object):
             mkdir_p('patches/lap_{}_prew_{}/class_{}'.format(self.laplacian_threshold,
                                                              self.prewitt_threshold,
                                                              class_number))
+
+        patch_to_extract = 25000
         if not full:
             for i in range(start_value_extraction, per_class):
                 extracted = False
                 random_image = self.images[randint(0, len(self.images) - 1)]
                 while np.array_equal(random_image, np.zeros(random_image.shape)):
                     random_image = self.images[randint(0, len(self.images) - 1)]
-                patches_from_random = np.array(extract_patches_2d(random_image, self.patch_size, per_class))
+                patches_from_random = np.array(extract_patches_2d(random_image, self.patch_size, patch_to_extract))
                 counter = 0
 
                 while not extracted:
                     if counter > per_class / 2:
                         random_image = self.images[randint(0, len(self.images) - 1)]
                         patches_from_random = np.array(
-                            extract_patches_2d(random_image, self.patch_size, per_class))
+                            extract_patches_2d(random_image, self.patch_size, patch_to_extract))
                         counter = 0
-                    patch = np.array(patches_from_random[randint(0, per_class - 1)].astype(float))
+                    patch = np.array(patches_from_random[randint(0, patch_to_extract - 1)].astype(float))
                     if patch.max() > 1:
                         patch /= patch.max()
                     edges_2 = prewitt(patch)
