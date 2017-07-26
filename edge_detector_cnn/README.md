@@ -34,7 +34,7 @@ The images filtered after 17000 patches augmented rotating each patch of 90 degr
 
 <img src="readme/result_edge_14.png" width="100">
 
-Applyng then the canny filter as post processing i got the following result:
+Applyng then the canny filter as post processing I've got the following result:
 
 <img src="readme/result_edge__canny_added14.png" width="100">
 
