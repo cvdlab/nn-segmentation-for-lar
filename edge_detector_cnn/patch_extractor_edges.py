@@ -19,7 +19,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 from skimage.filters import prewitt, roberts
 from skimage.color import rgb2gray
 from skimage.transform import rotate
-from skimage.io import imread, imsave, imshow, show
+from skimage.io import imread, imsave
 from errno import EEXIST
 from os.path import isdir
 from os import makedirs
@@ -70,13 +70,12 @@ def count_center(edge):
     :return:
     """
     sum_center = 0.0
-    square_center = 2
+    square_center = 3
     patch_len = len(edge)
-    for k in range(-square_center, square_center):
-        for j in range(-square_center, square_center):
+    for k in range(-square_center, square_center + 1):
+        for j in range(-square_center, square_center + 1):
             sum_center += float(edge[(patch_len / 2) + k][(patch_len / 2) + j])
 
-    # return sum_center
     return sum_center
 
 
@@ -339,6 +338,6 @@ class PatchExtractor(object):
 
 if __name__ == '__main__':
     path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    prova = PatchExtractor(20, prew_trsh=3., rob_trsh=3., path_to_images=path_images)
+    prova = PatchExtractor(80, prew_trsh=6., rob_trsh=6., path_to_images=path_images)
     patches, labels = prova.make_training_patches()
     pass

@@ -308,19 +308,19 @@ if __name__ == '__main__':
     parser.add_argument('-trshrob',
                         '-rob',
                         action='store',
-                        default=3.0,
+                        default=6.0,
                         dest='rob_trsh',
                         type=float,
                         help=('set the threshold value to apply'
-                              ' for the roberts filter in patch extraction,\n default=3.0'))
+                              ' for the roberts filter in patch extraction,\n default=6.0'))
     parser.add_argument('-trshprew',
                         '-prew',
                         action='store',
-                        default=3.0,
+                        default=6.0,
                         dest='prew_trsh',
                         type=float,
                         help=('set the threshold value to apply'
-                              ' for the prewitt filter in patch extraction,\n default=3.0'))
+                              ' for the prewitt filter in patch extraction,\n default=6.0'))
     parser.add_argument('-load',
                         '-l',
                         action='store',
