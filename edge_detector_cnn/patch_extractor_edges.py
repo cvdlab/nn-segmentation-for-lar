@@ -1,13 +1,10 @@
 """
-
 This code extract and catalog all patches to give to the cnn
 to achieve the edge of an image through the following criteria:
 0 - non edge
 1 - edge
-
 one patch is  marked as edge when passing through 2  filters(prewitt and roberts) the  count_center function
 returns a value above a certain threshold
-
 all patches found are saved in the folder  patches/rob_{value inserted}_prew_{value inserted}/  and inside of this
 two folder classes contains them together with the rotations folder each that contains all patches with the
 previously specified rotation

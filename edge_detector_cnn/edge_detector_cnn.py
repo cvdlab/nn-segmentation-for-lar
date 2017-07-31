@@ -127,7 +127,7 @@ class Edge_detector_cnn(object):
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
 
-        n_epochs = 30
+        n_epochs = 5
         self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=238, verbose=1)
 
     def _compile_model(self):
@@ -375,7 +375,7 @@ if __name__ == '__main__':
                                                        rob_trsh=result.rob_trsh,
                                                        prew_trsh=result.prew_trsh,
                                                        augmentation_angle=result.angle)
-        X, y = patches.make_training_patches()
+        X, y = patches.make_training_patches
         model = Edge_detector_cnn()
         model.fit_model(X, y)
     else:
