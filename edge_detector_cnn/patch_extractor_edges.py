@@ -19,7 +19,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 from skimage.filters import prewitt, roberts
 from skimage.color import rgb2gray
 from skimage.transform import rotate
-from skimage.io import imread, imsave
+from skimage.io import imread, imsave, imshow, show
 from errno import EEXIST
 from os.path import isdir
 from os import makedirs
@@ -200,6 +200,7 @@ class PatchExtractor(object):
                                                              class_number))
 
         patch_to_extract = 25000
+
         if not full:
             for i in range(start_value_extraction, per_class):
                 extracted = False
@@ -221,78 +222,66 @@ class PatchExtractor(object):
                     edges_2 = prewitt(patch)
                     edges_5_n = roberts(patch)
 
-                    if class_number == 1:
-                        first_cond = not np.array_equal(patch, np.zeros(patch.shape))
-                        if first_cond:
-                            second_cond = (count_center(edges_5_n) > self.roberts_threshold or
-                                           count_center(edges_2) > self.prewitt_threshold)
-                            if second_cond:
+                    choosing_cond = (count_center(edges_5_n) > self.roberts_threshold or
+                                     count_center(edges_2) > self.prewitt_threshold)
+
+                    if class_number == 1 and choosing_cond:
+                        final_patch = np.array([patch, edges_2, edges_5_n])
+                        patches.append(final_patch)
+                        try:
+                            imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
+                                                                                     self.prewitt_threshold,
+                                                                                     class_number,
+                                                                                     i),
+                                   final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                   dtype=float)
+                        except:
+                            print('problem occurred in save for class {}'.format(class_number))
+                            exit(0)
+
+                        print('*---> patch {} added and saved '.format(i))
+                        extracted = True
+
+                    elif class_number == 0 and not choosing_cond:
+                        if np.array_equal(patch, np.zeros(patch.shape)):
+                            if ten_percent_black < ten_percent_black_value:
                                 final_patch = np.array([patch, edges_2, edges_5_n])
                                 patches.append(final_patch)
                                 try:
 
-                                    imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                             self.prewitt_threshold,
-                                                                                             class_number,
-                                                                                             i),
-                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                           dtype=float)
+                                    imsave(
+                                        './patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
+                                                                                          self.prewitt_threshold,
+                                                                                          class_number,
+                                                                                          i),
+                                        final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                        dtype=float)
                                 except:
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
+                                    print('problem occurred in save for class {}'.format(class_number))
                                     exit(0)
 
                                 print('*---> patch {} added and saved '.format(i))
+                                ten_percent_black += 1
                                 extracted = True
-
-                    elif class_number == 0:
-                        first_cond = count_center(edges_5_n) <= self.roberts_threshold and \
-                                     count_center(edges_2) <= self.prewitt_threshold
-                        if first_cond:
-                            if np.array_equal(patch, np.zeros(patch.shape)):
-                                if ten_percent_black < ten_percent_black_value:
-                                    final_patch = np.array([patch, edges_2, edges_5_n])
-                                    patches.append(final_patch)
-                                    try:
-
-                                        imsave(
-                                            './patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                              self.prewitt_threshold,
-                                                                                              class_number,
-                                                                                              i),
-                                            final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                            dtype=float)
-                                    except:
-                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
-                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
-                                        print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
-                                        exit(0)
-
-                                    print('*---> patch {} added and saved '.format(i))
-                                    ten_percent_black += 1
-                                    extracted = True
-                                else:
-                                    pass
                             else:
-                                final_patch = np.array([patch, edges_2, edges_5_n])
-                                patches.append(final_patch)
-                                try:
+                                pass
+                        else:
+                            final_patch = np.array([patch, edges_2, edges_5_n])
+                            patches.append(final_patch)
+                            try:
 
-                                    imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                             self.prewitt_threshold,
-                                                                                             class_number,
-                                                                                             i),
-                                           final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                           dtype=float)
-                                except:
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).max())
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).min())
-                                    print(final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])).size)
-                                    exit(0)
+                                imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
+                                                                                         self.prewitt_threshold,
+                                                                                         class_number,
+                                                                                         i),
+                                       final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
+                                       dtype=float)
+                            except:
+                                print('problem occurred in save for class {}'.format(class_number))
+                                exit(0)
 
-                                print('*---> patch {} added and saved '.format(i))
-                                extracted = True
+                            print('*---> patch {} added and saved '.format(i))
+                            extracted = True
                     counter += 1
 
         if self.augmentation_angle != 0:
@@ -349,7 +338,7 @@ class PatchExtractor(object):
 
 
 if __name__ == '__main__':
-    # path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # prova = PatchExtractor(20, prew_trsh=3., rob_trsh=3., path_to_images=path_images)
-    # patches, labels = prova.make_training_patches()
+    path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
+    prova = PatchExtractor(20, prew_trsh=3., rob_trsh=3., path_to_images=path_images)
+    patches, labels = prova.make_training_patches()
     pass

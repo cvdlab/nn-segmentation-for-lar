@@ -127,8 +127,8 @@ class Edge_detector_cnn(object):
         X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
         Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
 
-        n_epochs = 10
-        self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=300, verbose=1)
+        n_epochs = 30
+        self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=238, verbose=1)
 
     def _compile_model(self):
         # default decay = 1e-6, lr = 0.01 maybe 1e-2 for linear decay?
@@ -155,11 +155,11 @@ class Edge_detector_cnn(object):
 
         img_mask = np.pad(segmentation, (11, 11), mode='edge')
         print()
-        print('+' * 40)
-        print('+', 'mask shape', img_mask.shape, '+')
-        print('+', 'mask max: {}, mask min: {}'.format(img_mask.max(), img_mask.min()), '+')
-        print('+' * 40)
-        print()
+        # print('+' * 40)
+        # print('+', 'mask shape', img_mask.shape, '+')
+        # print('+', 'mask max: {}, mask min: {}'.format(img_mask.max(), img_mask.min()), '+')
+        # print('+' * 40)
+        # print()
 
         test_back = rgb2gray(imread(test_img).astype('float')).reshape(5, 216, 160)[-2]
 
