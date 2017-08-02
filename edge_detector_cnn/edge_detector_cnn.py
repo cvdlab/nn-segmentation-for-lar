@@ -11,12 +11,13 @@ from keras.initializers import glorot_normal
 from keras.optimizers import SGD
 from keras.utils.np_utils import to_categorical
 from sklearn.feature_extraction.image import extract_patches_2d
-from skimage.filters import prewitt, roberts
+from sklearn.preprocessing import normalize
+from skimage.filters import prewitt, laplace
 from skimage.color import rgb2gray, gray2rgb
 from skimage.exposure import adjust_gamma
 from skimage.io import imread, imsave
 from skimage.feature import canny as canny_filter
-from skimage import img_as_float
+from skimage import img_as_float, img_as_ubyte
 from glob import glob
 from errno import EEXIST
 from os import makedirs
@@ -42,16 +43,16 @@ def mkdir_p(path):
     :return:
     """
     try:
-        makedirs(path)
+        makedirs( path )
     except OSError as exc:  # Python >2.5
-        if exc.errno == EEXIST and isdir(path):
+        if exc.errno == EEXIST and isdir( path ):
             pass
         else:
             raise
 
 
 # noinspection PyTypeChecker
-class Edge_detector_cnn(object):
+class Edge_detector_cnn( object ):
     def __init__(self, loaded_model=False, model_name=None):
         self.loaded_model = loaded_model
         if not self.loaded_model:
@@ -60,56 +61,56 @@ class Edge_detector_cnn(object):
             self._compile_model()
         else:
             if model_name is None:
-                model_to_load = str(raw_input('Which model should I load? '))
+                model_to_load = str( raw_input( 'Which model should I load? ' ) )
             else:
                 model_to_load = model_name
-            self.model = self.load_model_weights(model_to_load)
+            self.model = self.load_model_weights( model_to_load )
 
     def _make_model(self):
         step = 0
-        print('******************************************', step)
+        print( '******************************************', step )
         step += 1
         model_to_make = Sequential()
-        print('******************************************', step)
+        print( '******************************************', step )
         step += 1
-        model_to_make.add(Conv2D(32, (5, 5),
-                                 kernel_initializer=glorot_normal(),
-                                 bias_initializer='zeros',
-                                 strides=(3, 3),
-                                 data_format='channels_first',
-                                 input_shape=(3, 23, 23)
-                                 ))
-        print(model_to_make.input_shape)
-        print(model_to_make.output)
-        print('******************************************', step)
+        model_to_make.add( Conv2D( 32, (5, 5),
+                                   kernel_initializer=glorot_normal(),
+                                   bias_initializer='zeros',
+                                   strides=(3, 3),
+                                   data_format='channels_first',
+                                   input_shape=(3, 23, 23)
+                                   ) )
+        print( model_to_make.input_shape )
+        print( model_to_make.output )
+        print( '******************************************', step )
         step += 1
-        model_to_make.add(Activation('relu'))
-        print(model_to_make.output)
-        print('******************************************', step)
+        model_to_make.add( Activation( 'relu' ) )
+        print( model_to_make.output )
+        print( '******************************************', step )
         step += 1
-        model_to_make.add(Conv2D(filters=32,
-                                 kernel_size=(3, 3),
-                                 strides=(2, 2),
-                                 data_format='channels_first',
-                                 input_shape=(32, 7, 7)))
-        print(model_to_make.output)
-        print('******************************************', step)
+        model_to_make.add( Conv2D( filters=32,
+                                   kernel_size=(3, 3),
+                                   strides=(2, 2),
+                                   data_format='channels_first',
+                                   input_shape=(32, 7, 7) ) )
+        print( model_to_make.output )
+        print( '******************************************', step )
         step += 1
-        model_to_make.add(Activation('relu'))
-        print(model_to_make.output)
-        print('******************************************', 'flattened')
-        model_to_make.add(Flatten())
-        print(model_to_make.output)
-        model_to_make.add(Dense(units=2, input_dim=288))
-        print('******************************************', step)
+        model_to_make.add( Activation( 'relu' ) )
+        print( model_to_make.output )
+        print( '******************************************', 'flattened' )
+        model_to_make.add( Flatten() )
+        print( model_to_make.output )
+        model_to_make.add( Dense( units=2, input_dim=288 ) )
+        print( '******************************************', step )
         step += 1
-        print(model_to_make.output)
-        model_to_make.add(Activation('softmax'))
-        print('******************************************', step)
+        print( model_to_make.output )
+        model_to_make.add( Activation( 'softmax' ) )
+        print( '******************************************', step )
         step += 1
-        print('model waiting to be compiled')
+        print( 'model waiting to be compiled' )
         self.model = model_to_make
-        print('******************************************')
+        print( '******************************************' )
 
     def fit_model(self, X_train, y_train):
         """
@@ -119,28 +120,28 @@ class Edge_detector_cnn(object):
         :return: Fits specified model
         """
 
-        Y_train = to_categorical(y_train, 2)
+        Y_train = to_categorical( y_train, 2 )
 
-        shuffle = zip(X_train, Y_train)
-        np.random.shuffle(shuffle)
+        shuffle = zip( X_train, Y_train )
+        np.random.shuffle( shuffle )
 
-        X_train = np.array([shuffle[i][0] for i in xrange(len(shuffle))])
-        Y_train = np.array([shuffle[i][1] for i in xrange(len(shuffle))])
+        X_train = np.array( [shuffle[i][0] for i in xrange( len( shuffle ) )] )
+        Y_train = np.array( [shuffle[i][1] for i in xrange( len( shuffle ) )] )
 
         n_epochs = 5
-        self.model.fit(X_train, Y_train, epochs=n_epochs, batch_size=238, verbose=1)
+        self.model.fit( X_train, Y_train, epochs=n_epochs, batch_size=238, verbose=1 )
 
     def _compile_model(self):
         # default decay = 1e-6, lr = 0.01 maybe 1e-2 for linear decay?
-        sgd = SGD(lr=3e-3,
-                  decay=0,
-                  momentum=0.9,
-                  nesterov=True)
-        print(sgd)
+        sgd = SGD( lr=3e-3,
+                   decay=0,
+                   momentum=0.9,
+                   nesterov=True )
+        print( sgd )
 
-        self.model.compile(optimizer=sgd,
-                           loss='categorical_crossentropy',
-                           metrics=['accuracy'])
+        self.model.compile( optimizer=sgd,
+                            loss='categorical_crossentropy',
+                            metrics=['accuracy'] )
 
     def show_segmented_image(self, index, test_img, both, canny_use=False, save=False):
         """
@@ -151,9 +152,9 @@ class Edge_detector_cnn(object):
                  if save is False, returns segmented image.
         """
 
-        segmentation = self.predict_image(test_img)
+        segmentation = self.predict_image( test_img )
 
-        img_mask = np.pad(segmentation, (11, 11), mode='edge')
+        img_mask = np.pad( segmentation, (11, 11), mode='edge' )
         print()
         # print('+' * 40)
         # print('+', 'mask shape', img_mask.shape, '+')
@@ -161,75 +162,75 @@ class Edge_detector_cnn(object):
         # print('+' * 40)
         # print()
 
-        test_back = rgb2gray(imread(test_img).astype('float')).reshape(5, 216, 160)[-2]
+        test_back = rgb2gray( imread( test_img ).astype( 'float' ) ).reshape( 5, 216, 160 )[-2]
 
-        edges = np.argwhere(img_mask == 1)
+        edges = np.argwhere( img_mask == 1 )
         # test_back = rgb2gray(np.ones((216, 160)))
-        gray_img = img_as_float(test_back)
+        gray_img = img_as_float( test_back )
 
         # adjust gamma of image
-        image = adjust_gamma(gray2rgb(gray_img), 0.8)
+        image = adjust_gamma( gray2rgb( gray_img ), 0.8 )
         sliced_image = image.copy()
 
         if sliced_image.max() > 1:
             sliced_image /= sliced_image.max()
 
-        print('\n', 'image size : {}'.format(sliced_image.shape))
+        print( '\n', 'image size : {}'.format( sliced_image.shape ) )
         color = [121. / 256, 31. / 256, 200. / 256]  # blue as choice
 
-        print(sliced_image.shape)
+        print( sliced_image.shape )
 
         # change colors of segmented class
-        for i in xrange(len(edges)):
+        for i in xrange( len( edges ) ):
             try:
                 sliced_image[edges[i][0]][edges[i][1]] = color
 
             except:
 
-                print('=' * 50)
+                print( '=' * 50 )
 
-                print(edges.max())
+                print( edges.max() )
 
-                print('=' * 50)
+                print( '=' * 50 )
 
-                print(edges.shape)
+                print( edges.shape )
 
-                print('=' * 50)
+                print( '=' * 50 )
 
-                print(edges[i][0], edges[i][1])
-                print(sliced_image.shape)
+                print( edges[i][0], edges[i][1] )
+                print( sliced_image.shape )
 
-                exit(0)
+                exit( 0 )
 
         canny_name = ''
 
         if both:
-            path = './results_edge{}/'.format(canny_name)
+            path = './results_edge{}/'.format( canny_name )
             try:
-                mkdir_p(path)
-                imsave('{}result_edge_{}{}.png'.format(path, canny_name, index), sliced_image)
+                mkdir_p( path )
+                imsave( '{}result_edge_{}{}.png'.format( path, canny_name, index ), sliced_image )
             except:
-                imsave('{}result_edge_{}{}.png'.format(path, canny_name, index), sliced_image)
+                imsave( '{}result_edge_{}{}.png'.format( path, canny_name, index ), sliced_image )
                 # plt.show()
             canny_use = True
 
         if save:
 
             if canny_use:
-                print('*' * 40)
-                print('applying canny filter to image ')
+                print( '*' * 40 )
+                print( 'applying canny filter to image ' )
                 canny_name = '_canny_added'
                 # canny filter to the image
-                canny_test_back_mask = canny_filter(test_back)
-                edgess_canny = np.argwhere(canny_test_back_mask == 1)
-                for i in xrange(len(edgess_canny)):
+                canny_test_back_mask = canny_filter( test_back )
+                edgess_canny = np.argwhere( canny_test_back_mask == 1 )
+                for i in xrange( len( edgess_canny ) ):
                     sliced_image[edgess_canny[i][0]][edgess_canny[i][1]] = color
-            path = './results_edge{}/'.format(canny_name)
+            path = './results_edge{}/'.format( canny_name )
             try:
-                mkdir_p(path)
-                imsave('{}result_edge_{}{}.png'.format(path, canny_name, index), sliced_image)
+                mkdir_p( path )
+                imsave( '{}result_edge_{}{}.png'.format( path, canny_name, index ), sliced_image )
             except:
-                imsave('{}result_edge_{}{}.png'.format(path, canny_name, index), sliced_image)
+                imsave( '{}result_edge_{}{}.png'.format( path, canny_name, index ), sliced_image )
         else:
             return sliced_image
 
@@ -240,22 +241,23 @@ class Edge_detector_cnn(object):
         :param show: displays segmentation results
         :return: segmented result
         """
-        img = np.array(rgb2gray(imread(test_img).astype('float')).reshape(5, 216, 160)[-2]) / 256
+        img = np.array( rgb2gray( imread( test_img ).astype( 'float' ) ).reshape( 5, 216, 160 )[-2] ) / 256
 
         plist = []
 
         # create patches from an entire slice
-        edges_2 = prewitt(img)
-        edges_5_n = roberts(img)
+        edges_2 = prewitt( img )
+        edges_5_n = normalize( laplace( img ) )
+        edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
 
-        plist.append(extract_patches_2d(img, (23, 23)))
-        plist.append(extract_patches_2d(edges_2, (23, 23)))
-        plist.append(extract_patches_2d(edges_5_n, (23, 23)))
-        patches = np.array(zip(np.array(plist[0]), np.array(plist[1]), np.array(plist[2])))
+        plist.append( extract_patches_2d( img, (23, 23) ) )
+        plist.append( extract_patches_2d( edges_2, (23, 23) ) )
+        plist.append( extract_patches_2d( edges_5_n, (23, 23) ) )
+        patches = np.array( zip( np.array( plist[0] ), np.array( plist[1] ), np.array( plist[2] ) ) )
 
         # predict classes of each pixel based on model
-        full_pred = self.model.predict_classes(patches)
-        fp1 = full_pred.reshape(194, 138)
+        full_pred = self.model.predict_classes( patches )
+        fp1 = full_pred.reshape( 194, 138 )
         return fp1
 
     def save_model(self, model_name):
@@ -264,17 +266,17 @@ class Edge_detector_cnn(object):
         :param model_name: name to save model and weigths under, including filepath but not extension
         :return:
         """
-        model_to_save = '{}.json'.format(model_name)
-        weights = '{}.hdf5'.format(model_name)
+        model_to_save = '{}.json'.format( model_name )
+        weights = '{}.hdf5'.format( model_name )
         json_string = self.model.to_json()
         try:
-            self.model.save_weights(weights)
+            self.model.save_weights( weights )
         except:
-            mkdir_p(model_name)
-            self.model.save_weights(weights)
+            mkdir_p( model_name )
+            self.model.save_weights( weights )
 
-        with open(model_to_save, 'w') as f:
-            json.dump(json_string, f)
+        with open( model_to_save, 'w' ) as f:
+            json.dump( json_string, f )
 
     @staticmethod
     def load_model_weights(model_name):
@@ -283,115 +285,115 @@ class Edge_detector_cnn(object):
         :param model_name: filepath to model and weights, not including extension
         :return: Model with loaded weights. can fit on model using loaded_model=True in fit_model method
         """
-        print('Loading model {}'.format(model_name))
-        model_to_load = '{}.json'.format(model_name)
-        weights = '{}.hdf5'.format(model_name)
-        with open(model_to_load) as f:
+        print( 'Loading model {}'.format( model_name ) )
+        model_to_load = '{}.json'.format( model_name )
+        weights = '{}.hdf5'.format( model_name )
+        with open( model_to_load ) as f:
             m = f.next()
-        model_comp = model_from_json(json.loads(m))
-        model_comp.load_weights(weights)
-        print('Done.')
+        model_comp = model_from_json( json.loads( m ) )
+        model_comp.load_weights( weights )
+        print( 'Done.' )
         return model_comp
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Commands to istanciate or load the convolutional neural network'
-                                                 'for edge detection')
-    parser.add_argument('-train',
-                        '-t',
-                        action='store',
-                        default=1000,
-                        dest='training_datas',
-                        type=int,
-                        help='set the number of data to train with,\n default=1000')
-    parser.add_argument('-trshrob',
-                        '-rob',
-                        action='store',
-                        default=6.0,
-                        dest='rob_trsh',
-                        type=float,
-                        help=('set the threshold value to apply'
-                              ' for the roberts filter in patch extraction,\n default=6.0'))
-    parser.add_argument('-trshprew',
-                        '-prew',
-                        action='store',
-                        default=6.0,
-                        dest='prew_trsh',
-                        type=float,
-                        help=('set the threshold value to apply'
-                              ' for the prewitt filter in patch extraction,\n default=6.0'))
-    parser.add_argument('-load',
-                        '-l',
-                        action='store',
-                        dest='model_to_load',
-                        default=0,
-                        type=str,
-                        help='load the model already trained,\n'
-                             'default no load happen,\n'
-                             'model name as:\n'
-                             'model_name')
-    parser.add_argument('-save',
-                        '-s',
-                        action='store_true',
-                        dest='save',
-                        default=False,
-                        help='save the trained model in the specified path,\n'
-                             'default no save happen')
-    parser.add_argument('-augmentation',
-                        '-a',
-                        action='store',
-                        default=0,
-                        dest='angle',
-                        type=int,
-                        help='set data augmentation option through the specified rotating angle\n'
-                             'express values in degrees, default=0')
-    parser.add_argument('-canny',
-                        '-c',
-                        action='store_true',
-                        dest='both',
-                        default=False,
-                        help=' add canny filter to segmented image (use -test option before using it)')
-    parser.add_argument('-both',
-                        '-b',
-                        action='store_true',
-                        dest='canny_filter',
-                        default=False,
-                        help=' save both canny filter to segmented image and'
-                             ' segmented image (use -test option before using it(no -c is required)')
-    parser.add_argument('-test',
-                        action='store_true',
-                        dest='test',
-                        default=False,
-                        help='execute test')
+    parser = argparse.ArgumentParser( description='Commands to istanciate or load the convolutional neural network'
+                                                  'for edge detection' )
+    parser.add_argument( '-train',
+                         '-t',
+                         action='store',
+                         default=1000,
+                         dest='training_datas',
+                         type=int,
+                         help='set the number of data to train with,\n default=1000' )
+    parser.add_argument( '-trshlap',
+                         '-lap',
+                         action='store',
+                         default=.9,
+                         dest='lap_trsh',
+                         type=float,
+                         help=('set the threshold value to apply'
+                               ' for the laplace filter in patch extraction,\n default=.9') )
+    parser.add_argument( '-trshprew',
+                         '-prew',
+                         action='store',
+                         default=.9,
+                         dest='prew_trsh',
+                         type=float,
+                         help=('set the threshold value to apply'
+                               ' for the prewitt filter in patch extraction,\n default=.9') )
+    parser.add_argument( '-load',
+                         '-l',
+                         action='store',
+                         dest='model_to_load',
+                         default=0,
+                         type=str,
+                         help='load the model already trained,\n'
+                              'default no load happen,\n'
+                              'model name as:\n'
+                              'model_name' )
+    parser.add_argument( '-save',
+                         '-s',
+                         action='store_true',
+                         dest='save',
+                         default=False,
+                         help='save the trained model in the specified path,\n'
+                              'default no save happen' )
+    parser.add_argument( '-augmentation',
+                         '-a',
+                         action='store',
+                         default=0,
+                         dest='angle',
+                         type=int,
+                         help='set data augmentation option through the specified rotating angle\n'
+                              'express values in degrees, default=0' )
+    parser.add_argument( '-canny',
+                         '-c',
+                         action='store_true',
+                         dest='both',
+                         default=False,
+                         help=' add canny filter to segmented image (use -test option before using it)' )
+    parser.add_argument( '-both',
+                         '-b',
+                         action='store_true',
+                         dest='canny_filter',
+                         default=False,
+                         help=' save both canny filter to segmented image and'
+                              ' segmented image (use -test option before using it(no -c is required)' )
+    parser.add_argument( '-test',
+                         action='store_true',
+                         dest='test',
+                         default=False,
+                         help='execute test' )
     result = parser.parse_args()
 
-    train_data = glob('./Training_PNG/**.png')
-    print(str(len(train_data)) + ' images to load')
+    train_data = glob( './Training_PNG/**.png' )
+    print( str( len( train_data ) ) + ' images to load' )
 
-    if type(result.model_to_load) is int:
-        patches = patch_extractor_edges.PatchExtractor(num_samples=result.training_datas,
-                                                       path_to_images=train_data,
-                                                       rob_trsh=result.rob_trsh,
-                                                       prew_trsh=result.prew_trsh,
-                                                       augmentation_angle=result.angle)
-        X, y = patches.make_training_patches
+    if type( result.model_to_load ) is int:
+        patches = patch_extractor_edges.PatchExtractor( num_samples=result.training_datas,
+                                                        path_to_images=train_data,
+                                                        lap_trsh=result.lap_trsh,
+                                                        prew_trsh=result.prew_trsh,
+                                                        augmentation_angle=result.angle )
+        X, y = patches.make_training_patches()
         model = Edge_detector_cnn()
-        model.fit_model(X, y)
+        model.fit_model( X, y )
     else:
-        model = Edge_detector_cnn(loaded_model=True, model_name='./models/' + result.model_to_load)
+        model = Edge_detector_cnn( loaded_model=True, model_name='./models/' + result.model_to_load )
 
     if result.save:
         if result.angle is not 0:
-            angle = '_augmented_{}_'.format(result.angle)
+            angle = '_augmented_{}_'.format( result.angle )
         else:
             angle = '_not_augmented_'
 
-        model.save_model('models/{}_{}result_edge_detector_cnn'.format(result.training_datas, angle))
+        model.save_model( 'models/{}_{}result_edge_detector_cnn'.format( result.training_datas, angle ) )
 
     if result.test:
-        tests = glob('test_data/**')
+        tests = glob( 'test_data/**' )
         segmented_images = []
-        for index, slice in enumerate(tests):
+        for index, slice in enumerate( tests ):
             segmented_images.append(
-                model.show_segmented_image(index, slice, both=result.both, canny_use=result.canny_filter, save=True))
+                model.show_segmented_image( index, slice, both=result.both, canny_use=result.canny_filter, save=True ) )

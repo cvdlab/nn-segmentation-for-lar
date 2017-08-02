@@ -3,9 +3,9 @@ This code extract and catalog all patches to give to the cnn
 to achieve the edge of an image through the following criteria:
 0 - non edge
 1 - edge
-one patch is  marked as edge when passing through 2  filters(prewitt and roberts) the  count_center function
+one patch is  marked as edge when passing through 2  filters(prewitt and laplace) the  count_center function
 returns a value above a certain threshold
-all patches found are saved in the folder  patches/rob_{value inserted}_prew_{value inserted}/  and inside of this
+all patches found are saved in the folder  patches/lap_{value inserted}_prew_{value inserted}/  and inside of this
 two folder classes contains them together with the rotations folder each that contains all patches with the
 previously specified rotation
 """
@@ -13,10 +13,12 @@ previously specified rotation
 from __future__ import print_function
 from random import randint
 from sklearn.feature_extraction.image import extract_patches_2d
-from skimage.filters import prewitt, roberts
+from skimage.filters import prewitt, laplace
+from sklearn.preprocessing import normalize
 from skimage.color import rgb2gray
 from skimage.transform import rotate
 from skimage.io import imread, imsave
+from skimage import img_as_ubyte, img_as_float
 from errno import EEXIST
 from os.path import isdir
 from os import makedirs
@@ -40,9 +42,9 @@ def mkdir_p(path):
     :return:
     """
     try:
-        makedirs(path)
+        makedirs( path )
     except OSError as exc:  # Python >2.5
-        if exc.errno == EEXIST and isdir(path):
+        if exc.errno == EEXIST and isdir( path ):
             pass
         else:
             raise
@@ -54,9 +56,9 @@ def get_right_order(filename):
     :param filename:  path to image
     :return:
     """
-    last_part = filename.split('/')[len(filename.split('/')) - 1]
+    last_part = filename.split( '/' )[len( filename.split( '/' ) ) - 1]
     number_value = last_part[:-4]
-    return int(number_value)
+    return int( number_value )
 
 
 def count_center(edge):
@@ -68,50 +70,50 @@ def count_center(edge):
     """
     sum_center = 0.0
     square_center = 3
-    patch_len = len(edge)
-    for k in range(-square_center, square_center + 1):
-        for j in range(-square_center, square_center + 1):
-            sum_center += float(edge[(patch_len / 2) + k][(patch_len / 2) + j])
+    patch_len = len( edge )
+    for k in range( -square_center, square_center + 1 ):
+        for j in range( -square_center, square_center + 1 ):
+            sum_center += float( edge[(patch_len / 2) + k][(patch_len / 2) + j] )
 
     return sum_center
 
 
 def rotate_patches(patch, edge_1, edge_2, rotating_angle):
-    return np.array([rotate(patch, rotating_angle, resize=False),
-                     rotate(edge_1, rotating_angle, resize=False),
-                     rotate(edge_2, rotating_angle, resize=False)])
+    return np.array( [rotate( patch, rotating_angle, resize=False ),
+                      rotate( edge_1, rotating_angle, resize=False ),
+                      rotate( edge_2, rotating_angle, resize=False )] )
 
 
-class PatchExtractor(object):
-    def __init__(self, num_samples=None, path_to_images=None, rob_trsh=None, prew_trsh=None, patch_size=(23, 23),
+class PatchExtractor( object ):
+    def __init__(self, num_samples=None, path_to_images=None, lap_trsh=None, prew_trsh=None, patch_size=(23, 23),
                  augmentation_angle=0):
         """
         load and store all necessary information to achieve the patch extraction
         :param num_samples: number of patches required
         :param path_to_images: path to the folder containing all '.png.' files
-        :param rob_trsh: threshold value to apply for patch extraction for what concern roberts filter
+        :param lap_trsh: threshold value to apply for patch extraction for what concern laplace filter
         :param prew_trsh: threshold value to apply for patch extraction for what concern prewitt filter
         :param patch_size: dimensions for each patch
         :param augmentation_angle: angle necessary to operate the increase of the number of patches
         """
-        print('*' * 50)
-        print('Starting patch extraction...')
-        if (rob_trsh is None) or (prew_trsh is None):
-            print(" missing threshold value, impossible to proceed")
-            exit(1)
+        print( '*' * 50 )
+        print( 'Starting patch extraction...' )
+        if (lap_trsh is None) or (prew_trsh is None):
+            print( " missing threshold value, impossible to proceed" )
+            exit( 1 )
         if path_to_images is None:
-            ValueError('no destination file')
-            exit(1)
+            ValueError( 'no destination file' )
+            exit( 1 )
         if num_samples is None:
-            ValueError('specify the number of patches to extract and reload class')
-            exit(1)
-        self.roberts_threshold = rob_trsh
+            ValueError( 'specify the number of patches to extract and reload class' )
+            exit( 1 )
+        self.laplace_threshold = lap_trsh
         self.prewitt_threshold = prew_trsh
         self.augmentation_angle = augmentation_angle % 360
-        self.images = np.array([rgb2gray(imread(path_to_images[el]).astype('float').reshape(5, 216, 160)[-2])
-                                for el in range(len(path_to_images))])
+        self.images = np.array( [rgb2gray( imread( path_to_images[el] ).astype( 'float' ).reshape( 5, 216, 160 )[-2] )
+                                 for el in range( len( path_to_images ) )] )
         if self.augmentation_angle is not 0:
-            self.augmentation_multiplier = int(360. / self.augmentation_angle)
+            self.augmentation_multiplier = int( 360. / self.augmentation_angle )
         else:
             self.augmentation_multiplier = 1
 
@@ -127,16 +129,17 @@ class PatchExtractor(object):
         labels (num_samples,)
         """
         classes = [0, 1]
-        per_class = self.num_samples / len(classes)
+        per_class = self.num_samples / len( classes )
         patches, labels = [], []
-        for i in xrange(len(classes)):
-            p, l = self._find_patches(classes[i], per_class)
-            patches.append(p)
-            labels.append(l)
 
-        return np.array(patches).reshape((self.num_samples * self.augmentation_multiplier), 3, self.patch_size[0],
-                                         self.patch_size[1]), \
-               np.array(labels).reshape((self.num_samples * self.augmentation_multiplier))
+        for i in xrange( len( classes ) ):
+            p, l = self._find_patches( classes[i], per_class )
+            patches.append( p )
+            labels.append( l )
+
+        return np.array( patches ).reshape( (self.num_samples * self.augmentation_multiplier), 3, self.patch_size[0],
+                                            self.patch_size[1] ), \
+               np.array( labels ).reshape( (self.num_samples * self.augmentation_multiplier) )
 
     def _find_patches(self, class_number, per_class):
         """
@@ -148,193 +151,202 @@ class PatchExtractor(object):
         """
         print()
         patches = []
-        labels = np.ones(per_class * self.augmentation_multiplier) * class_number
+        labels = np.ones( per_class * self.augmentation_multiplier ) * class_number
 
         ten_percent_black = 0
-        ten_percent_black_value = int(float(per_class) * 0.0001)
+        ten_percent_black_value = int( float( per_class ) * 0.0001 )
 
         start_value_extraction = 0
         full = False
 
-        if isdir('patches/') and isdir('patches/rob_{}_prew_{}/'.format(self.roberts_threshold,
-                                                                        self.prewitt_threshold)) and isdir(
-            'patches/rob_{}_prew_{}/class_{}/'.format(self.roberts_threshold,
-                                                      self.prewitt_threshold,
-                                                      class_number)):
+        if isdir( 'patches/' ) and isdir( 'patches/lap_{}_prew_{}/'.format( self.laplace_threshold,
+                                                                            self.prewitt_threshold ) ) and isdir(
+            'patches/lap_{}_prew_{}/class_{}/'.format( self.laplace_threshold,
+                                                       self.prewitt_threshold,
+                                                       class_number ) ):
 
             # load all patches
             # check if quantity is enough to work
-            path_to_patches = sorted(glob('./patches/rob_{}_prew_{}/class_{}/**.png'.format(self.roberts_threshold,
-                                                                                            self.prewitt_threshold,
-                                                                                            class_number)),
-                                     key=get_right_order)
+            path_to_patches = sorted( glob( './patches/lap_{}_prew_{}/class_{}/**.png'.format( self.laplace_threshold,
+                                                                                               self.prewitt_threshold,
+                                                                                               class_number ) ),
+                                      key=get_right_order )
 
-            for path_index in xrange(len(path_to_patches)):
+            for path_index in xrange( len( path_to_patches ) ):
                 if path_index < per_class:
-                    patch_to_load = np.array(rgb2gray(imread(path_to_patches[path_index],
-                                                             dtype=float)).reshape(3,
-                                                                                   self.patch_size[0],
-                                                                                   self.patch_size[1])).astype(
-                        float)
-                    patches.append(patch_to_load)
-                    for el in xrange(len(patch_to_load)):
-                        if np.max(patch_to_load[el]) > 1:
-                            patch_to_load[el] /= np.max(patch_to_load[el])
-                    print('*---> patch {} loaded and added '.format(path_index))
+                    patch_to_load = np.array( rgb2gray( imread( path_to_patches[path_index],
+                                                                dtype=float ) ).reshape( 3,
+                                                                                         self.patch_size[0],
+                                                                                         self.patch_size[1] ) ).astype(
+                        float )
+                    patches.append( patch_to_load )
+                    for el in xrange( len( patch_to_load ) ):
+                        if np.max( patch_to_load[el] ) > 1:
+                            patch_to_load[el] /= np.max( patch_to_load[el] )
+                    print( '*---> patch {}/{} loaded and added '.format( path_index, per_class ) )
                 else:
                     full = True
                     break
 
-            if len(path_to_patches) < per_class:
+            if len( path_to_patches ) < per_class:
                 # change start_value_extraction
-                start_value_extraction = len(path_to_patches)
+                start_value_extraction = len( path_to_patches )
             else:
                 full = True
         else:
-            mkdir_p('patches/rob_{}_prew_{}/class_{}'.format(self.roberts_threshold,
-                                                             self.prewitt_threshold,
-                                                             class_number))
+            mkdir_p( 'patches/lap_{}_prew_{}/class_{}'.format( self.laplace_threshold,
+                                                               self.prewitt_threshold,
+                                                               class_number ) )
 
         patch_to_extract = 25000
 
         if not full:
-            for i in range(start_value_extraction, per_class):
+            for i in range( start_value_extraction, per_class ):
                 extracted = False
-                random_image = self.images[randint(0, len(self.images) - 1)]
-                while np.array_equal(random_image, np.zeros(random_image.shape)):
-                    random_image = self.images[randint(0, len(self.images) - 1)]
-                patches_from_random = np.array(extract_patches_2d(random_image, self.patch_size, patch_to_extract))
+                random_image = self.images[randint( 0, len( self.images ) - 1 )]
+                while np.array_equal( random_image, np.zeros( random_image.shape ) ):
+                    random_image = self.images[randint( 0, len( self.images ) - 1 )]
+                patches_from_random = np.array( extract_patches_2d( random_image, self.patch_size, patch_to_extract ) )
                 counter = 0
 
                 while not extracted:
                     if counter > per_class / 2:
-                        random_image = self.images[randint(0, len(self.images) - 1)]
+                        random_image = self.images[randint( 0, len( self.images ) - 1 )]
                         patches_from_random = np.array(
-                            extract_patches_2d(random_image, self.patch_size, patch_to_extract))
+                            extract_patches_2d( random_image, self.patch_size, patch_to_extract ) )
                         counter = 0
-                    patch = np.array(patches_from_random[randint(0, patch_to_extract - 1)].astype(float))
+                    patch = np.array( patches_from_random[randint( 0, patch_to_extract - 1 )].astype( float ) )
                     if patch.max() > 1:
-                        patch /= patch.max()
-                    edges_2 = prewitt(patch)
-                    edges_5_n = roberts(patch)
+                        patch = normalize( patch )
+                    edges_2 = prewitt( patch )
+                    edges_5_n = normalize( laplace( patch ) )
+                    edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
 
-                    choosing_cond = (count_center(edges_5_n) > self.roberts_threshold or
-                                     count_center(edges_2) > self.prewitt_threshold)
+                    # print( '\n*' * 2 )
+                    # print( 'laplace center {}'.format( count_center( edges_5_n ) ) )
+                    # print( 'prewitt center {}'.format( count_center( edges_2 ) ) )
+                    # print( '\n*' * 2 )
+
+                    choosing_cond = (count_center( edges_5_n ) > self.laplace_threshold or
+                                     count_center( edges_2 ) > self.prewitt_threshold)
 
                     if class_number == 1 and choosing_cond:
-                        final_patch = np.array([patch, edges_2, edges_5_n])
-                        patches.append(final_patch)
+                        final_patch = np.array( [patch, edges_2, edges_5_n] )
+                        patches.append( final_patch )
                         try:
-                            imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                     self.prewitt_threshold,
-                                                                                     class_number,
-                                                                                     i),
-                                   final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                   dtype=float)
+                            imsave( './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
+                                                                                       self.prewitt_threshold,
+                                                                                       class_number,
+                                                                                       i ),
+                                    final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
+                                    dtype=float )
                         except:
-                            print('problem occurred in save for class {}'.format(class_number))
-                            exit(0)
+                            print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                            exit( 0 )
 
-                        print('*---> patch {} added and saved '.format(i))
+                        print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
                         extracted = True
 
                     elif class_number == 0 and not choosing_cond:
-                        if np.array_equal(patch, np.zeros(patch.shape)):
+                        if np.array_equal( patch, np.zeros( patch.shape ) ):
                             if ten_percent_black < ten_percent_black_value:
-                                final_patch = np.array([patch, edges_2, edges_5_n])
-                                patches.append(final_patch)
+                                final_patch = np.array( [patch, edges_2, edges_5_n] )
+                                patches.append( final_patch )
                                 try:
 
                                     imsave(
-                                        './patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                          self.prewitt_threshold,
-                                                                                          class_number,
-                                                                                          i),
-                                        final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                        dtype=float)
+                                        './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
+                                                                                           self.prewitt_threshold,
+                                                                                           class_number,
+                                                                                           i ),
+                                        final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
+                                        dtype=float )
                                 except:
-                                    print('problem occurred in save for class {}'.format(class_number))
-                                    exit(0)
+                                    print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                                    exit( 0 )
 
-                                print('*---> patch {} added and saved '.format(i))
+                                print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
                                 ten_percent_black += 1
                                 extracted = True
                             else:
                                 pass
                         else:
-                            final_patch = np.array([patch, edges_2, edges_5_n])
-                            patches.append(final_patch)
+                            final_patch = np.array( [patch, edges_2, edges_5_n] )
+                            patches.append( final_patch )
                             try:
 
-                                imsave('./patches/rob_{}_prew_{}/class_{}/{}.png'.format(self.roberts_threshold,
-                                                                                         self.prewitt_threshold,
-                                                                                         class_number,
-                                                                                         i),
-                                       final_patch.reshape((3 * self.patch_size[0], self.patch_size[1])),
-                                       dtype=float)
+                                imsave( './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
+                                                                                           self.prewitt_threshold,
+                                                                                           class_number,
+                                                                                           i ),
+                                        final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
+                                        dtype=float )
                             except:
-                                print('problem occurred in save for class {}'.format(class_number))
-                                exit(0)
+                                print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                                exit( 0 )
 
-                            print('*---> patch {} added and saved '.format(i))
+                            print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
                             extracted = True
                     counter += 1
 
         if self.augmentation_angle != 0:
-            print("\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format(class_number))
+            print( "\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format( class_number ) )
 
-            if isdir('./patches/rob_{}_prew_{}/class_{}/rotations'.format(self.roberts_threshold,
-                                                                          self.prewitt_threshold,
-                                                                          class_number)):
-                print("rotations folder present ")
+            if isdir( './patches/lap_{}_prew_{}/class_{}/rotations'.format( self.laplace_threshold,
+                                                                            self.prewitt_threshold,
+                                                                            class_number ) ):
+                print( "rotations folder present " )
             else:
-                mkdir_p('./patches/rob_{}_prew_{}/class_{}/rotations'.format(self.roberts_threshold,
-                                                                             self.prewitt_threshold,
-                                                                             class_number))
-                print("rotations folder created")
-            for el_index in xrange(len(patches)):
-                for j in range(1, self.augmentation_multiplier):
+                mkdir_p( './patches/lap_{}_prew_{}/class_{}/rotations'.format( self.laplace_threshold,
+                                                                               self.prewitt_threshold,
+                                                                               class_number ) )
+                print( "rotations folder created" )
+            for el_index in xrange( len( patches ) ):
+                for j in range( 1, self.augmentation_multiplier ):
                     try:
-                        patch_rotated = np.array(rgb2gray(imread(
-                            ('./patches/rob_{}_prew_{}/class_{}/'
-                             'rotations/{}_{}.png'.format(self.roberts_threshold,
-                                                          self.prewitt_threshold,
-                                                          class_number,
-                                                          el_index,
-                                                          self.augmentation_angle * j)))).reshape(3,
-                                                                                                  self.patch_size[0],
-                                                                                                  self.patch_size[1]
-                                                                                                  )).astype(float) / (
+                        patch_rotated = np.array( rgb2gray( imread(
+                            ('./patches/lap_{}_prew_{}/class_{}/'
+                             'rotations/{}_{}.png'.format( self.laplace_threshold,
+                                                           self.prewitt_threshold,
+                                                           class_number,
+                                                           el_index,
+                                                           self.augmentation_angle * j )) ) ).reshape( 3,
+                                                                                                       self.patch_size[
+                                                                                                           0],
+                                                                                                       self.patch_size[
+                                                                                                           1]
+                                                                                                       ) ).astype(
+                            float ) / (
                                             256 * 256)
-                        patches.append(patch_rotated)
-                        print('*---> patch {} loaded and added '
-                              'with rotation of {} degrees'.format(el_index,
-                                                                   self.augmentation_angle * j))
+                        patches.append( patch_rotated )
+                        print( '*---> patch {}/{} loaded and added '
+                               'with rotation of {} degrees'.format( el_index, per_class,
+                                                                     self.augmentation_angle * j ) )
                     except:
-                        final_rotated_patch = rotate_patches(patches[el_index][0],
-                                                             patches[el_index][1],
-                                                             patches[el_index][2],
-                                                             self.augmentation_angle * j)
-                        patches.append(final_rotated_patch)
-                        imsave('./patches/rob_{}_prew_{}/class_{}/'
-                               'rotations/{}_{}.png'.format(self.roberts_threshold,
-                                                            self.prewitt_threshold,
-                                                            class_number,
-                                                            el_index,
-                                                            self.augmentation_angle * j),
-                               final_rotated_patch.reshape(3 * self.patch_size[0], self.patch_size[1]),
-                               dtype=float)
-                        print(('*---> patch {} saved and added '
-                               'with rotation of {} degrees '.format(el_index,
-                                                                     self.augmentation_angle * j)))
+                        final_rotated_patch = rotate_patches( patches[el_index][0],
+                                                              patches[el_index][1],
+                                                              patches[el_index][2],
+                                                              self.augmentation_angle * j )
+                        patches.append( final_rotated_patch )
+                        imsave( './patches/lap_{}_prew_{}/class_{}/'
+                                'rotations/{}_{}.png'.format( self.laplace_threshold,
+                                                              self.prewitt_threshold,
+                                                              class_number,
+                                                              el_index,
+                                                              self.augmentation_angle * j ),
+                                final_rotated_patch.reshape( 3 * self.patch_size[0], self.patch_size[1] ),
+                                dtype=float )
+                        print( ('*---> patch {}/{} saved and added '
+                                'with rotation of {} degrees '.format( el_index, per_class,
+                                                                       self.augmentation_angle * j )) )
             print()
-            print('augmentation done \n')
-        print('extraction for class {} complete\n'.format(class_number))
-        return np.array(patches), labels
+            print( 'augmentation done \n' )
+        print( 'extraction for class {} complete\n'.format( class_number ) )
+        return np.array( patches ), labels
 
 
 if __name__ == '__main__':
-    # path_images = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # prova = PatchExtractor(80, prew_trsh=6., rob_trsh=6., path_to_images=path_images)
+    # path_images = glob( '/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**' )
+    # prova = PatchExtractor( 80, prew_trsh=.6, lap_trsh=.6, path_to_images=path_images )
     # patches, labels = prova.make_training_patches()
     pass
