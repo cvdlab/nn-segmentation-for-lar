@@ -16,6 +16,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 from skimage.filters import prewitt, laplace
 from sklearn.preprocessing import normalize
 from skimage.color import rgb2gray
+from skimage.exposure import rescale_intensity
 from skimage.transform import rotate
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte, img_as_float
@@ -75,7 +76,7 @@ def count_center(edge):
         for j in range( -square_center, square_center + 1 ):
             sum_center += float( edge[(patch_len / 2) + k][(patch_len / 2) + j] )
 
-    return sum_center
+    return (sum_center / (square_center ^ 2))
 
 
 def rotate_patches(patch, edge_1, edge_2, rotating_angle):
@@ -218,7 +219,10 @@ class PatchExtractor( object ):
                     patch = np.array( patches_from_random[randint( 0, patch_to_extract - 1 )].astype( float ) )
                     if patch.max() > 1:
                         patch = normalize( patch )
-                    edges_2 = prewitt( patch )
+
+                    p2, p98 = np.percentile( patch, (2, 98) )
+                    patch_1 = rescale_intensity( patch, in_range=(p2, p98) )
+                    edges_2 = prewitt( patch_1 ).astype(float)
                     edges_5_n = normalize( laplace( patch ) )
                     edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
 
@@ -231,7 +235,7 @@ class PatchExtractor( object ):
                                      count_center( edges_2 ) > self.prewitt_threshold)
 
                     if class_number == 1 and choosing_cond:
-                        final_patch = np.array( [patch, edges_2, edges_5_n] )
+                        final_patch = np.array( [patch_1, edges_2, edges_5_n] )
                         patches.append( final_patch )
                         try:
                             imsave( './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
@@ -241,7 +245,7 @@ class PatchExtractor( object ):
                                     final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
                                     dtype=float )
                         except:
-                            print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                            print( 'problem occurred in save for class {}'.format( class_number ) )
                             exit( 0 )
 
                         print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
@@ -262,7 +266,7 @@ class PatchExtractor( object ):
                                         final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
                                         dtype=float )
                                 except:
-                                    print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                                    print( 'problem occurred in save for class {}'.format( class_number ) )
                                     exit( 0 )
 
                                 print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
@@ -271,7 +275,7 @@ class PatchExtractor( object ):
                             else:
                                 pass
                         else:
-                            final_patch = np.array( [patch, edges_2, edges_5_n] )
+                            final_patch = np.array( [patch_1, edges_2, edges_5_n] )
                             patches.append( final_patch )
                             try:
 
@@ -282,7 +286,7 @@ class PatchExtractor( object ):
                                         final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
                                         dtype=float )
                             except:
-                                print( 'plaplem occurred in save for class {}'.format( class_number ) )
+                                print( 'problem occurred in save for class {}'.format( class_number ) )
                                 exit( 0 )
 
                             print( '*---> patch {}/{} added and saved '.format( i, per_class ) )
@@ -347,6 +351,6 @@ class PatchExtractor( object ):
 
 if __name__ == '__main__':
     path_images = glob( '/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**' )
-    prova = PatchExtractor( 20, prew_trsh=.6, lap_trsh=.6, path_to_images=path_images )
+    prova = PatchExtractor( 20, prew_trsh=.5, lap_trsh=.6, path_to_images=path_images )
     patches, labels = prova.make_training_patches()
     pass
