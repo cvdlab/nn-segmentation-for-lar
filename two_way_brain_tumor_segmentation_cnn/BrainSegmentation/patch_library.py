@@ -12,6 +12,13 @@ from skimage.morphology import disk
 import progressbar
 from sklearn.feature_extraction.image import extract_patches_2d
 
+__author__ = "Matteo Causio"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Matteo Causio"
+__status__ = "Production"
+
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 np.random.seed(5)
 

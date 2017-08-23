@@ -10,6 +10,13 @@ from keras.constraints import max_norm
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils
 
+__author__ = "Matteo Causio"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Matteo Causio"
+__status__ = "Production"
+
 
 class BrainSegDCNN(object):
     """

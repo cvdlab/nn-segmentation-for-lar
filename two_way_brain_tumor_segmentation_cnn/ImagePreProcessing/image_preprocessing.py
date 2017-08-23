@@ -11,6 +11,13 @@ from glob import glob
 from skimage import io
 from nipype.interfaces.ants.segmentation import N4BiasFieldCorrection
 
+__author__ = "Matteo Causio"
+
+__license__ = "MIT"
+__version__ = "1.0.1"
+__maintainer__ = "Matteo Causio"
+__status__ = "Production"
+
 np.random.seed(5) # for reproducibility
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 
