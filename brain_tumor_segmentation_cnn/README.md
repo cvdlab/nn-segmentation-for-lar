@@ -46,19 +46,14 @@ The model for HGG tumor modality is the following:
 
 For both models in the and is used the SoftMax activation function.
 
-1. In 
-
-	- brain_pipeline
-	- patch_extractor
-	- patch_library
-
+1.  In 
+	* brain_pipeline
+	* patch_extractor
+	* patch_library
  the conversion of all '.mha'  files into '.png'  to all brain images is performed. To each brain image from every patient, all different modalities ( (FLAIR), T1, T1-contrasted, and T2 )   are put together into one  single stripe .  The output for an image is the following:
- 
- 
-<img src="readme/1.png" width="80" height="330" >
+[image](./readme/.png)
 
-
- 
+ You can find pre_processing [here.](https://github.com/cvdlab/nn-segmentation-for-lar/tree/master/pre_processing)
 
 2.  in Segmentaion_Model the cnn models are created and compiled. Is possible to choose between hgg or lgg model (as descibed in the article) depending from which kind of tumoral pattern is treated.
 

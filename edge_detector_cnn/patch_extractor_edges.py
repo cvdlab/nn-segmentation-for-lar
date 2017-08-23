@@ -346,7 +346,7 @@ class PatchExtractor( object ):
 
 
 if __name__ == '__main__':
-    # path_images = glob( '/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**' )
-    # prova = PatchExtractor( 80, prew_trsh=.6, lap_trsh=.6, path_to_images=path_images )
-    # patches, labels = prova.make_training_patches()
+    path_images = glob( '/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**' )
+    prova = PatchExtractor( 20, prew_trsh=.6, lap_trsh=.6, path_to_images=path_images )
+    patches, labels = prova.make_training_patches()
     pass
