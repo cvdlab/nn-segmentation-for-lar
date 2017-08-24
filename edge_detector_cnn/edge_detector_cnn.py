@@ -12,7 +12,8 @@ from keras.optimizers import SGD
 from keras.utils.np_utils import to_categorical
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.preprocessing import normalize
-from skimage.filters import prewitt, laplace
+from skimage.exposure import adjust_sigmoid
+from skimage.filters import prewitt, laplace, sobel
 from skimage.color import rgb2gray, gray2rgb
 from skimage.exposure import adjust_gamma
 from skimage.io import imread, imsave
@@ -128,8 +129,8 @@ class Edge_detector_cnn( object ):
         X_train = np.array( [shuffle[i][0] for i in xrange( len( shuffle ) )] )
         Y_train = np.array( [shuffle[i][1] for i in xrange( len( shuffle ) )] )
 
-        n_epochs = 5
-        self.model.fit( X_train, Y_train, epochs=n_epochs, batch_size=238, verbose=1 )
+        n_epochs = 10
+        self.model.fit( X_train, Y_train, epochs=n_epochs, batch_size=128, verbose=1 )
 
     def _compile_model(self):
         # default decay = 1e-6, lr = 0.01 maybe 1e-2 for linear decay?
@@ -246,11 +247,19 @@ class Edge_detector_cnn( object ):
         plist = []
 
         # create patches from an entire slice
-        edges_2 = prewitt( img )
-        edges_5_n = normalize( laplace( img ) )
+        # edges_2 = prewitt( img )
+        # edges_5_n = normalize( laplace( img ) )
+        # edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
+
+        img_1 = adjust_sigmoid( img ).astype( float )
+        edges_1 = sobel(img_1)
+        edges_2 = prewitt( img_1 ).astype( float )
+        edges_5_n = normalize( laplace( img_1 ) )
         edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
 
-        plist.append( extract_patches_2d( img, (23, 23) ) )
+
+
+        plist.append( extract_patches_2d( edges_1, (23, 23) ) )
         plist.append( extract_patches_2d( edges_2, (23, 23) ) )
         plist.append( extract_patches_2d( edges_5_n, (23, 23) ) )
         patches = np.array( zip( np.array( plist[0] ), np.array( plist[1] ), np.array( plist[2] ) ) )
@@ -310,19 +319,19 @@ if __name__ == '__main__':
     parser.add_argument( '-trshlap',
                          '-lap',
                          action='store',
-                         default=.9,
+                         default=.6,
                          dest='lap_trsh',
                          type=float,
                          help=('set the threshold value to apply'
-                               ' for the laplace filter in patch extraction,\n default=.9') )
+                               ' for the laplace filter in patch extraction,\n default=0.6') )
     parser.add_argument( '-trshprew',
                          '-prew',
                          action='store',
-                         default=.9,
+                         default=.6,
                          dest='prew_trsh',
                          type=float,
                          help=('set the threshold value to apply'
-                               ' for the prewitt filter in patch extraction,\n default=.9') )
+                               ' for the prewitt filter in patch extraction,\n default=0.6') )
     parser.add_argument( '-load',
                          '-l',
                          action='store',
