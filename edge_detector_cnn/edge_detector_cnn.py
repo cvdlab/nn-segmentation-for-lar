@@ -1,6 +1,10 @@
 """
 
-Description soon
+The following Convolutional Neural Network it has been implemented
+taking inspiration from Ruohui Wang's paper (http://www.springer.com/cda/content/
+document/cda_downloaddocument/9783319406626-c2.pdf?SGWID=0-0-45-1575688-p180031493)
+The patch extraction is made using the canny filter for edge detection.
+
 
 """
 
@@ -129,7 +133,7 @@ class Edge_detector_cnn( object ):
         X_train = np.array( [shuffle[i][0] for i in xrange( len( shuffle ) )] )
         Y_train = np.array( [shuffle[i][1] for i in xrange( len( shuffle ) )] )
 
-        n_epochs = 15
+        n_epochs = 20
         self.model.fit( X_train, Y_train, epochs=n_epochs, batch_size=128, verbose=1 )
 
     def _compile_model(self):
@@ -147,6 +151,9 @@ class Edge_detector_cnn( object ):
     def show_segmented_image(self, index, test_img, both, canny_use=False, save=False):
         """
         Creates an image of original brain with segmentation overlay
+        :param both: weather or not to use the canny filter plus segmented image,
+                     and the segmentedd image only
+        :param canny_use: weather or not to use the canny filter plus segmented image
         :param test_img: file path to test image for segmentation, including file extension
         :param save: If true, shows output image. (defaults to False)
         :return: if save is True, save image of segmentation results
