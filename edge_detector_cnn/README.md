@@ -1,8 +1,8 @@
 # Unsupervised Edge Segmentation CNN
 
 This Edge Detector CNN model it has been built taking inspiration from the [Ruohui Wang's](http://www.springer.com/cda/content/document/cda_downloaddocument/9783319406626-c2.pdf?SGWID=0-0-45-1575688-p180031493) paper. 
-Is a Convolutional Neural Network  that perform and  edge detection. This Neural Network is trained through the help of the Prewitt filter together with the laplace filter that assist the patch extraction task allowing to label as edge all patches of size 23x23 that present a certain score when evaluated through a 'count_center' function that all sums feature inside the 3x3 square cetered at the patch center.
-The three input channel to each patch is composed by the grayscale brain image at first place, the prewitt filtered image at second place,  and the laplace filtered image at third place. The wollowing choice it has been made in order to simplify the pattern research of the Network.
+Is a Convolutional Neural Network  that perform and  edge detection. This Neural Network is trained through the help of canny edge detector that assist the patch extraction task allowing to label as edge all patches of size 23x23 that present a certain score when evaluated through a 'count_center' function that all sums feature inside the 3x3 square cetered at the patch center.
+The three input channel to each patch is composed by the grayscale negative brain image at first place, the grayscale filtered image at second place,  and the laplace filtered image at third place. The wollowing choice it has been made in order to simplify the pattern research of the Network.
 
 Each patch is processed through the model:
 
@@ -60,11 +60,10 @@ Applyng then the canny filter as post processing I've got the following result:
                         
 	'-load','-l',		load the model already trained, as default no load happen. insert model name as: 'model_name' (string value expected)
 	
-	'-trshrob','-rob',	set the threshold value to apply
-                              		'for the robert filter in patch extraction,\n default=3.0 
                               	
-    '-trshprew','-prew',	set the threshold value to apply'
-                              		' for the prewitt filter in patch extraction,\n default=3.0 
+    '-sigma', 	set the sigma value to apply'
+                              		' for the canny edge extractor in the
+                              		patch extraction,\n default=1.0 
 	
 	'-save', '-s',	save the trained model in the specified path, as  default no save happen( the name and all it's specification happens automatically) (no value expected)
 	

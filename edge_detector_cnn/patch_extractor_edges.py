@@ -3,9 +3,8 @@ This code extract and catalog all patches to give to the cnn
 to achieve the edge of an image through the following criteria:
 0 - non edge
 1 - edge
-one patch is  marked as edge when passing through 2  filters(prewitt and laplace) the  count_center function
-returns a value above a certain threshold
-all patches found are saved in the folder  patches/lap_{value inserted}_prew_{value inserted}/  and inside of this
+one patch is  marked as edge when passing through the canny edge extractor
+all patches found are saved in the folder  patches/sigma_{value inserted}/  and inside of this
 two folder classes contains them together with the rotations folder each that contains all patches with the
 previously specified rotation
 """
@@ -13,11 +12,12 @@ previously specified rotation
 from __future__ import print_function
 from random import randint
 from sklearn.feature_extraction.image import extract_patches_2d
-from skimage.filters import prewitt, laplace,sobel
 from sklearn.preprocessing import normalize
 from skimage.color import rgb2gray
 from skimage.exposure import adjust_sigmoid
 from skimage.transform import rotate
+from skimage.filters import laplace
+from skimage.feature import canny
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte, img_as_float
 from errno import EEXIST
@@ -29,7 +29,7 @@ import numpy as np
 __author__ = "Cesare Catavitello"
 
 __license__ = "MIT"
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __maintainer__ = "Cesare Catavitello"
 __email__ = "cesarec88@gmail.com"
 __status__ = "Production"
@@ -61,22 +61,18 @@ def get_right_order(filename):
     number_value = last_part[:-4]
     return int( number_value )
 
-
-def count_center(edge):
+def is_boarder(patch, sigma):
     """
-    this function sum the value in the square of dimension 3x3
-    in the center of the patch
-    :param edge: the mask obtained with the filter
-    :return:
+    this function evaluates the canny filter ovet the passed patch
+    returning through boolean
+    wheather or not the image can be catalogued as boarder retrieving the
+    boolean value of the center
+    :param patch: the image to filter
+    :param sigma: sigma value for the canny filter
+    :return: boolean value
     """
-    sum_center = 0.0
-    square_center = 2
-    patch_len = len( edge )
-    for k in range( -square_center, square_center + 1 ):
-        for j in range( -square_center, square_center + 1 ):
-            sum_center += float( edge[(patch_len / 2) + k][(patch_len / 2) + j] )
-
-    return (sum_center / (square_center * square_center))
+    bool_patch = canny( patch, sigma=sigma )
+    return bool_patch[patch.shape[0] / 2][patch.shape[1] / 2]
 
 
 def rotate_patches(patch, edge_1, edge_2, rotating_angle):
@@ -86,20 +82,21 @@ def rotate_patches(patch, edge_1, edge_2, rotating_angle):
 
 
 class PatchExtractor( object ):
-    def __init__(self, num_samples=None, path_to_images=None, lap_trsh=None, prew_trsh=None, patch_size=(23, 23),
+    def __init__(self, num_samples=None, path_to_images=None, sigma=None,
+                 patch_size=(23, 23),
                  augmentation_angle=0):
         """
         load and store all necessary information to achieve the patch extraction
         :param num_samples: number of patches required
         :param path_to_images: path to the folder containing all '.png.' files
-        :param lap_trsh: threshold value to apply for patch extraction for what concern laplace filter
-        :param prew_trsh: threshold value to apply for patch extraction for what concern prewitt filter
+        :param sigma: sigma value to apply at the canny filter for patch extraction criteria
         :param patch_size: dimensions for each patch
         :param augmentation_angle: angle necessary to operate the increase of the number of patches
         """
         print( '*' * 50 )
         print( 'Starting patch extraction...' )
-        if (lap_trsh is None) or (prew_trsh is None):
+        # inserire il check per sigma
+        if sigma is None:
             print( " missing threshold value, impossible to proceed" )
             exit( 1 )
         if path_to_images is None:
@@ -108,8 +105,7 @@ class PatchExtractor( object ):
         if num_samples is None:
             ValueError( 'specify the number of patches to extract and reload class' )
             exit( 1 )
-        self.laplace_threshold = lap_trsh
-        self.prewitt_threshold = prew_trsh
+        self.sigma = sigma
         self.augmentation_angle = augmentation_angle % 360
         self.images = np.array( [rgb2gray( imread( path_to_images[el] ).astype( 'float' ).reshape( 5, 216, 160 )[-2] )
                                  for el in range( len( path_to_images ) )] )
@@ -160,17 +156,15 @@ class PatchExtractor( object ):
         start_value_extraction = 0
         full = False
 
-        if isdir( 'patches/' ) and isdir( 'patches/lap_{}_prew_{}/'.format( self.laplace_threshold,
-                                                                            self.prewitt_threshold ) ) and isdir(
-            'patches/lap_{}_prew_{}/class_{}/'.format( self.laplace_threshold,
-                                                       self.prewitt_threshold,
-                                                       class_number ) ):
+        if isdir( 'patches/' ) and isdir( 'patches/sigma_{}/'.format( self.sigma
+                                                                      ) ) and isdir(
+            'patches/sigma_{}/class_{}/'.format( self.sigma,
+                                                 class_number ) ):
 
             # load all patches
             # check if quantity is enough to work
-            path_to_patches = sorted( glob( './patches/lap_{}_prew_{}/class_{}/**.png'.format( self.laplace_threshold,
-                                                                                               self.prewitt_threshold,
-                                                                                               class_number ) ),
+            path_to_patches = sorted( glob( './patches/sigma_{}/class_{}/**.png'.format( self.sigma,
+                                                                                         class_number ) ),
                                       key=get_right_order )
 
             for path_index in xrange( len( path_to_patches ) ):
@@ -195,9 +189,8 @@ class PatchExtractor( object ):
             else:
                 full = True
         else:
-            mkdir_p( 'patches/lap_{}_prew_{}/class_{}'.format( self.laplace_threshold,
-                                                               self.prewitt_threshold,
-                                                               class_number ) )
+            mkdir_p( 'patches/sigma_{}/class_{}'.format( self.sigma,
+                                                         class_number ) )
 
         patch_to_extract = 25000
 
@@ -221,27 +214,20 @@ class PatchExtractor( object ):
                         patch = normalize( patch )
 
                     patch_1 = adjust_sigmoid( patch )
-                    edges_1 = sobel(adjust_sigmoid( patch , inv=True))
-                    edges_2 = prewitt( patch_1 ).astype(float)
+                    edges_1 = adjust_sigmoid( patch, inv=True )
+                    edges_2 = patch_1
                     edges_5_n = normalize( laplace( patch ) )
                     edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
 
-                    # print( '\n*' * 2 )
-                    # print( 'laplace center {}'.format( count_center( edges_5_n ) ) )
-                    # print( 'prewitt center {}'.format( count_center( edges_2 ) ) )
-                    # print( '\n*' * 2 )
-
-                    choosing_cond = (count_center( edges_5_n ) > self.laplace_threshold and
-                                     count_center( edges_2 ) > self.prewitt_threshold)
+                    choosing_cond = is_boarder( patch=patch_1, sigma=self.sigma )
 
                     if class_number == 1 and choosing_cond:
                         final_patch = np.array( [edges_1, edges_2, edges_5_n] )
                         patches.append( final_patch )
                         try:
-                            imsave( './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
-                                                                                       self.prewitt_threshold,
-                                                                                       class_number,
-                                                                                       i ),
+                            imsave( './patches/sigma_{}/class_{}/{}.png'.format( self.sigma,
+                                                                                 class_number,
+                                                                                 i ),
                                     final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
                                     dtype=float )
                         except:
@@ -258,13 +244,11 @@ class PatchExtractor( object ):
                                 patches.append( final_patch )
                                 try:
 
-                                    imsave(
-                                        './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
-                                                                                           self.prewitt_threshold,
-                                                                                           class_number,
-                                                                                           i ),
-                                        final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
-                                        dtype=float )
+                                    imsave( './patches/sigma_{}/class_{}/{}.png'.format( self.sigma,
+                                                                                         class_number,
+                                                                                         i ),
+                                            final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
+                                            dtype=float )
                                 except:
                                     print( 'problem occurred in save for class {}'.format( class_number ) )
                                     exit( 0 )
@@ -279,10 +263,9 @@ class PatchExtractor( object ):
                             patches.append( final_patch )
                             try:
 
-                                imsave( './patches/lap_{}_prew_{}/class_{}/{}.png'.format( self.laplace_threshold,
-                                                                                           self.prewitt_threshold,
-                                                                                           class_number,
-                                                                                           i ),
+                                imsave( './patches/sigma_{}/class_{}/{}.png'.format( self.sigma,
+                                                                                     class_number,
+                                                                                     i ),
                                         final_patch.reshape( (3 * self.patch_size[0], self.patch_size[1]) ),
                                         dtype=float )
                             except:
@@ -296,22 +279,19 @@ class PatchExtractor( object ):
         if self.augmentation_angle != 0:
             print( "\n *_*_*_*_* proceeding  with data augmentation for class {}  *_*_*_*_* \n".format( class_number ) )
 
-            if isdir( './patches/lap_{}_prew_{}/class_{}/rotations'.format( self.laplace_threshold,
-                                                                            self.prewitt_threshold,
-                                                                            class_number ) ):
+            if isdir( './patches/sigma_{}/class_{}/rotations'.format( self.sigma,
+                                                                      class_number ) ):
                 print( "rotations folder present " )
             else:
-                mkdir_p( './patches/lap_{}_prew_{}/class_{}/rotations'.format( self.laplace_threshold,
-                                                                               self.prewitt_threshold,
-                                                                               class_number ) )
+                mkdir_p( './patches/sigma_{}/class_{}/rotations'.format( self.sigma,
+                                                                         class_number ) )
                 print( "rotations folder created" )
             for el_index in xrange( len( patches ) ):
                 for j in range( 1, self.augmentation_multiplier ):
                     try:
                         patch_rotated = np.array( rgb2gray( imread(
-                            ('./patches/lap_{}_prew_{}/class_{}/'
-                             'rotations/{}_{}.png'.format( self.laplace_threshold,
-                                                           self.prewitt_threshold,
+                            ('./patches/sigma_{}/class_{}/'
+                             'rotations/{}_{}.png'.format( self.sigma,
                                                            class_number,
                                                            el_index,
                                                            self.augmentation_angle * j )) ) ).reshape( 3,
@@ -332,9 +312,8 @@ class PatchExtractor( object ):
                                                               patches[el_index][2],
                                                               self.augmentation_angle * j )
                         patches.append( final_rotated_patch )
-                        imsave( './patches/lap_{}_prew_{}/class_{}/'
-                                'rotations/{}_{}.png'.format( self.laplace_threshold,
-                                                              self.prewitt_threshold,
+                        imsave( './patches/sigma_{}/class_{}/'
+                                'rotations/{}_{}.png'.format( self.sigma,
                                                               class_number,
                                                               el_index,
                                                               self.augmentation_angle * j ),
@@ -351,6 +330,6 @@ class PatchExtractor( object ):
 
 if __name__ == '__main__':
     path_images = glob( '/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**' )
-    prova = PatchExtractor( 40, prew_trsh=.5, lap_trsh=.6, path_to_images=path_images )
+    prova = PatchExtractor( 40, sigma=.6, path_to_images=path_images )
     patches, labels = prova.make_training_patches()
     pass

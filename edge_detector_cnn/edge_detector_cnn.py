@@ -13,7 +13,7 @@ from keras.utils.np_utils import to_categorical
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.preprocessing import normalize
 from skimage.exposure import adjust_sigmoid
-from skimage.filters import prewitt, laplace, sobel
+from skimage.filters import laplace
 from skimage.color import rgb2gray, gray2rgb
 from skimage.exposure import adjust_gamma
 from skimage.io import imread, imsave
@@ -31,7 +31,7 @@ import json
 __author__ = "Cesare Catavitello"
 
 __license__ = "MIT"
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __maintainer__ = "Cesare Catavitello"
 __email__ = "cesarec88@gmail.com"
 __status__ = "Production"
@@ -129,7 +129,7 @@ class Edge_detector_cnn( object ):
         X_train = np.array( [shuffle[i][0] for i in xrange( len( shuffle ) )] )
         Y_train = np.array( [shuffle[i][1] for i in xrange( len( shuffle ) )] )
 
-        n_epochs = 10
+        n_epochs = 15
         self.model.fit( X_train, Y_train, epochs=n_epochs, batch_size=128, verbose=1 )
 
     def _compile_model(self):
@@ -177,7 +177,7 @@ class Edge_detector_cnn( object ):
             sliced_image /= sliced_image.max()
 
         print( '\n', 'image size : {}'.format( sliced_image.shape ) )
-        color = [121. / 256, 31. / 256, 200. / 256]  # blue as choice
+        color = [221. / 256, 31. / 256, 100. / 256]  # blue as choice
 
         print( sliced_image.shape )
 
@@ -247,17 +247,11 @@ class Edge_detector_cnn( object ):
         plist = []
 
         # create patches from an entire slice
-        # edges_2 = prewitt( img )
-        # edges_5_n = normalize( laplace( img ) )
-        # edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
-
         img_1 = adjust_sigmoid( img ).astype( float )
-        edges_1 = sobel(img_1)
-        edges_2 = prewitt( img_1 ).astype( float )
+        edges_1 = adjust_sigmoid( img, inv=True ).astype( float )
+        edges_2 = img_1
         edges_5_n = normalize( laplace( img_1 ) )
         edges_5_n = img_as_float( img_as_ubyte( edges_5_n ) )
-
-
 
         plist.append( extract_patches_2d( edges_1, (23, 23) ) )
         plist.append( extract_patches_2d( edges_2, (23, 23) ) )
@@ -316,22 +310,13 @@ if __name__ == '__main__':
                          dest='training_datas',
                          type=int,
                          help='set the number of data to train with,\n default=1000' )
-    parser.add_argument( '-trshlap',
-                         '-lap',
+    parser.add_argument( '-sigma',
                          action='store',
-                         default=.6,
-                         dest='lap_trsh',
+                         default=1,
+                         dest='sigma',
                          type=float,
                          help=('set the threshold value to apply'
-                               ' for the laplace filter in patch extraction,\n default=0.6') )
-    parser.add_argument( '-trshprew',
-                         '-prew',
-                         action='store',
-                         default=.6,
-                         dest='prew_trsh',
-                         type=float,
-                         help=('set the threshold value to apply'
-                               ' for the prewitt filter in patch extraction,\n default=0.6') )
+                               ' for the canny filter in patch extraction,\n default=1') )
     parser.add_argument( '-load',
                          '-l',
                          action='store',
@@ -383,8 +368,7 @@ if __name__ == '__main__':
     if type( result.model_to_load ) is int:
         patches = patch_extractor_edges.PatchExtractor( num_samples=result.training_datas,
                                                         path_to_images=train_data,
-                                                        lap_trsh=result.lap_trsh,
-                                                        prew_trsh=result.prew_trsh,
+                                                        sigma=result.sigma,
                                                         augmentation_angle=result.angle )
         X, y = patches.make_training_patches()
         model = Edge_detector_cnn()
