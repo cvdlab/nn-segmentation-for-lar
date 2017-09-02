@@ -182,14 +182,14 @@ class PatchLibrary(object):
 
         print()
 
-        for i in xrange(len(patches)):
-            print('*' * 20)
-            print('*' * 20)
-
-            print(patches[i][0].max())
-            print(patches[i][0].min())
-            print('*' * 20)
-            print('*' * 20)
+        # for i in xrange(len(patches)):
+        #     print('*' * 20)
+        #     print('*' * 20)
+        #
+        #     print(patches[i][0].max())
+        #     print(patches[i][0].min())
+        #     print('*' * 20)
+        #     print('*' * 20)
 
 
         if self.augmentation_angle != 0:
@@ -289,7 +289,7 @@ class PatchLibrary(object):
 
 if __name__ == '__main__':
     # train_data = glob('/Users/Cesare/Desktop/lavoro/cnn_med3d/images/Training_PNG/**')
-    # patch_extractor = PatchLibrary(train_data=train_data, num_samples=110, augmentation_angle=10)
+    # patch_extractor = PatchLibrary(train_data=train_data, num_samples=20, augmentation_angle=180)
     # patches, labels = patch_extractor.make_training_patches()
 
     pass
