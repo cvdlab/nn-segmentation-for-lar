@@ -4,32 +4,42 @@ import json
 from glob import glob
 import os
 import progressbar
+import argparse
 from patch_library import PatchLibrary
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.image import extract_patches_2d
 from skimage import io, color, img_as_float
 from skimage.exposure import adjust_gamma
-from skimage.segmentation import mark_boundaries
 from keras.models import Model, model_from_json
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.layers import Dropout, Input, Reshape
 from keras.layers.merge import Concatenate
 from keras.optimizers import SGD
 from keras import regularizers
-from keras.initializers import zeros, lecun_uniform
 from keras.constraints import max_norm
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils
-from keras.utils.vis_utils import plot_model
+from os import makedirs
+from os.path import isdir
+from errno import EEXIST
 
-__author__ = "Matteo Causio"
-
-__license__ = "MIT"
-__version__ = "1.0.1"
-__maintainer__ = "Matteo Causio"
-__status__ = "Production"
 
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
+
+def mkdir_p(path):
+    """
+    mkdir -p function, makes folder recursively if required
+    :param path:
+    :return:
+    """
+    try:
+        makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == EEXIST and isdir(path):
+            pass
+        else:
+            raise
+
 
 
 class BrainSegDCNN(object):
@@ -156,14 +166,13 @@ class BrainSegDCNN(object):
 
     def fit_model(self, x33_train, y_train, x33_uniftrain, y_uniftrain, x65_train=None, x65_uniftrain=None):
         '''
-        Fit the dcnn. First create
-        :param x33_train:
-        :param x65_train:
-        :param y_train:
-        :param x33_uniftrain:
-        :param x65_uniftrain:
-        :param y_uniftrain:
-        :return:
+        Fit the model in both modality single or cascade. For cascade model need either 65x65 and 33x33 patches
+        :param x33_train:33x33 patches
+        :param x65_train:65x65 patches
+        :param y_train: labels
+        :param x33_uniftrain:33x33 uniformly distribuited patches
+        :param x65_uniftrain:65x65 uniformly distribuited patches
+        :param y_uniftrain:uniformly distribuited labels
         '''
         if self.cascade_model:
             if x65_train == None and x65_uniftrain == None:
@@ -173,7 +182,7 @@ class BrainSegDCNN(object):
             # Stop the training if the monitor function doesn't change after patience epochs
             earlystopping = EarlyStopping(monitor='val_loss', patience=2, verbose=1, mode='auto')
             # Save model after each epoch to check/bm_epoch#-val_loss
-            checkpointer = ModelCheckpoint(filepath="./check/bm_{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
+            checkpointer = ModelCheckpoint(filepath="/home/ixb3/Scrivania/check/bm_{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
             # Fit the first cnn
             self.fit_cnn1(X33_train, Y_train, X33_uniftrain, Y_uniftrain)
             # Fix all the weights of the first cnn
@@ -193,6 +202,7 @@ class BrainSegDCNN(object):
             X33_train, Y_train, X33_uniftrain, Y_uniftrain = self.init_single_training(x33_train, y_train,
                                                                                 x33_uniftrain, y_uniftrain)
             self.fit_cnn1(X33_train, Y_train, X33_uniftrain, Y_uniftrain)
+            self.model = self.cnn1
             print 'Model trained'
 
     def fit_cnn1(self, X33_train, Y_train, X33_unif_train, Y_unif_train):
@@ -207,7 +217,7 @@ class BrainSegDCNN(object):
         # Stop the training if the monitor function doesn't change after patience epochs
         earlystopping = EarlyStopping(monitor='val_loss', patience=2, verbose=1, mode='auto')
         # Save model after each epoch to check/bm_epoch#-val_loss
-        checkpointer = ModelCheckpoint(filepath="./check/bm_{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
+        checkpointer = ModelCheckpoint(filepath="/home/ixb3/Scrivania/check/bm_{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
         # First-phase training with uniformly distribuited training set
         temp_cnn.fit(x=X33_train, y=Y_train, batch_size=self.batch_size, epochs=self.nb_epoch,
                      callbacks=[earlystopping, checkpointer], validation_split=0.3,  verbose=1)
@@ -241,6 +251,15 @@ class BrainSegDCNN(object):
         return freezed_model
 
     def init_single_training(self, x3, y, x3_unif, y_unif):
+        '''
+        helper function to initialize the training of the single model: shuffle the training set and make categorical
+        the targets
+        :param x3: 33x33 patches
+        :param y: labels
+        :param x3_unif: 33x33 uniformly distribuited patches
+        :param y_unif: uniformly distribuited labels
+        :return:
+        '''
         Y_train = np_utils.to_categorical(y, 5)
         # shuffle training set
         shuffle = zip(x3, Y_train)
@@ -258,6 +277,17 @@ class BrainSegDCNN(object):
         return X33_train, Y_train, X33_uniftrain, Y_uniftrain
 
     def init_cascade_training(self, x3, x6, y, x3_unif, x6_unif, y_unif):
+        '''
+        helper function to initialize the training of the cascade model:: shuffle the training set and make categorical
+        the targets
+        :param x3: 33x33 patches
+        :param x6: 65x65 patches
+        :param y: labels
+        :param x3_unif: 33x33 uniformly distribuited patches
+        :param x6_unif: 65x65 uniformly distribuited patches
+        :param y_unif: uniformly distribuited labels
+        :return:
+        '''
         Y_train = np_utils.to_categorical(y, 5)
         # shuffle training set
         shuffle = zip(x3, x6, Y_train)
@@ -278,7 +308,7 @@ class BrainSegDCNN(object):
 
     def save_model(self, model_name):
         '''
-        INPUT string 'model_name': name to save model and weigths under, including filepath but not extension
+        INPUT string 'model_name': path where to save model and weights, without extension
         Saves current model as json and weights as h5df file
         '''
 
@@ -326,8 +356,9 @@ class BrainSegDCNN(object):
                     image /= np.max(image)
                 patch65 = extract_patches_2d(image, (65, 65))
                 p65list.append(patch65)
-                p33list = self.center_n(33, patch65)
-                patches33 = np.array(zip(p33list[0], p33list[1], p33list[2], p33list[3]))
+                p33list.append(self.center_n(33, patch65))
+                print str(len(p33list))
+            patches33 = np.array(zip(p33list[0], p33list[1], p33list[2], p33list[3]))
             patches65 = np.array(zip(p65list[0], p65list[1], p65list[2], p65list[3]))
             # predict classes of each pixel based on model
             prediction = self.model.predict([patches65, patches33])
@@ -367,7 +398,7 @@ class BrainSegDCNN(object):
 
     def center_n(self, n, patches):
         """
-
+        helper function, get the nxn centered subpatch
         :param n: int, size of center patch to take (square)
         :param patches: list of patches to take subpatch of
         :return: list of center nxn patches.
@@ -386,9 +417,9 @@ class BrainSegDCNN(object):
             sub_patches.append(subs)
         return np.array(sub_patches)
 
-    def show_segmented_image(self, filepath_image, modality='t1c', show=False):
+    def save_segmented_image(self, filepath_image, modality='t1c', show=False):
         '''
-        Creates an image of original brain with segmentation overlay
+        Creates an image of original brain with segmentation overlay and save it in ./predictions
         INPUT   (1) str 'filepath_image': filepath to test image for segmentation, including file extension
                 (2) str 'modality': imaging modality to use as background. defaults to t1c. options: (flair, t1, t1c, t2)
                 (3) bool 'show': If true, shows output image. defaults to False.
@@ -432,82 +463,118 @@ class BrainSegDCNN(object):
             sliced_image[threes[i][0]][threes[i][1]] = blue_multiplier
         for i in xrange(len(fours)):
             sliced_image[fours[i][0]][fours[i][1]] = yellow_multiplier
-
+        #if show=True show the prediction
         if show:
             print 'Showing...'
             io.imshow(sliced_image)
             plt.show()
-            print 'Saving...'
-            io.imsave('./predictions/' + os.path.basename(filepath_image), sliced_image)
-        else:
-            return sliced_image
+        #save the prediction
+        print 'Saving...'
+        try:
+            mkdir_p('./predictions/')
+            io.imsave('./predictions/' + os.path.basename(filepath_image) + '.png', sliced_image)
+            print 'prediction saved.'
+        except:
+            io.imsave('./predictions/' + os.path.basename(filepath_image) + '.png', sliced_image)
+            print 'prediction saved.'
 
+if __name__ == "__main__":
+    #set arguments
+    parser = argparse.ArgumentParser(description='Commands to istanciate or load the convolutional neural network')
+    parser.add_argument('-cascade',
+                        '-c',
+                        action='store',
+                        default=False,
+                        dest='cascade_model',
+                        type=bool,
+                        help='set the model to be cascade_model(True) or single_model(False)\n default=False')
 
-def main_model(training_folder_path=None, label_folder_path=None, save_model_path=None, load_model_path=None, to_predict_paths=None, cascade_model=False):
-    if cascade_model:
-        # init model
-        brain_seg = BrainSegDCNN(dropout_rate=0.2, learning_rate=0.01, momentum_rate=0.5, decay_rate=0.1, l1_rate=0.001,
-                             l2_rate=0.001, batch_size=20, nb_epoch=10, nb_sample=50, cascade_model=True)
-        # make a file with the visualization of the model
-        # plot_model(model.model, to_file='./cascade_model.png')
+    parser.add_argument('-train',
+                        '-t',
+                        action='store',
+                        default=1000,
+                        dest='nb_samples',
+                        type=int,
+                        help='set the number of data to train with,\n default=1000')
+    parser.add_argument('-samplespath',
+                        '-sp',
+                        action='store',
+                        default='Training_PNG',
+                        dest='training_path',
+                        type=str,
+                        help='set the path of the folder containing samples for training,\n default=None')
+    parser.add_argument('-labelspath',
+                        '-lp',
+                        action='store',
+                        default='Labels',
+                        dest='labels_path',
+                        type=str,
+                        help='set the path of the folder containing labels for training,\n default=None')
 
-        # init PatchLibrary and then make patches from training_set
-        if training_folder_path is not None and label_folder_path is not None:
-            training_set = glob(training_folder_path + '/**')
-            patches = PatchLibrary(train_samples=training_set, label_folder_path=label_folder_path,
-                                   num_samples=brain_seg.nb_sample)
+    parser.add_argument('-load',
+                        '-l',
+                        action='store',
+                        dest='model_to_load',
+                        default=0,
+                        type=str,
+                        help='load the model already trained,\n'
+                             'default no load happen,\n'
+                             'model name as:\n'
+                             'model_name')
+    parser.add_argument('-save',
+                        '-s',
+                        action='store',
+                        dest='save',
+                        default=None,
+                        type=str,
+                        help='save the model after been trained,\n'
+                             'default no save happen,\n'
+                             'model name as:\n'
+                             'model_name')
+    parser.add_argument('-test',
+                        action='store',
+                        dest='test_path',
+                        default=None,
+                        type=str,
+                        help='path of the folder containing the RMI images to execute the brain segmentation\n'
+                             'default no execution happens,\n'
+                             'test folder path as:\n'
+                             'test_path')
+    result = parser.parse_args()
+    #compile the model
+    brain_seg = BrainSegDCNN(dropout_rate=0.2, learning_rate=0.01, momentum_rate=0.5, decay_rate=0.1,
+                                 l1_rate=0.001,
+                                 l2_rate=0.001, batch_size=20, nb_epoch=10, nb_sample=result.nb_samples,
+                                 cascade_model=result.cascade_model)
+    #train the model if -load is not given
+    if type(result.model_to_load) is int:
+        # check if the path of the folder containing the training samples is given, otherwise ask to insert it
+        training_set = glob(result.training_path + '/**')
+        #train the model in single or cascade model
+        if brain_seg.cascade_model:
+            patches = PatchLibrary(train_samples=training_set, label_folder_path=result.labels_path,
+                                       num_samples=brain_seg.nb_sample)
             x33_train, x65_train, y_train = patches.make_training_patches(balanced_classes=False)
             x33_uniftrain, x65_uniftrain, y_uniftrain = patches.make_training_patches()
             # fit model
             brain_seg.fit_model(x33_train, y_train, x33_uniftrain, y_uniftrain, x65_train=x65_train,
-                            x65_uniftrain=x65_uniftrain)
-
-        # save model
-        if save_model_path is not None:
-            brain_seg.save_model(save_model_path)
-        # load model
-        if load_model_path is not None:
-            brain_seg.model = brain_seg.load_model(load_model_path)
-
-        # segment and show segmented image
-        if to_predict_paths is not None:
-            for to_predict in to_predict_paths:
-                brain_seg.show_segmented_image(to_predict, show=True)
-    else:
-        # init model
-        brain_seg = BrainSegDCNN(dropout_rate=0.2, learning_rate=0.01, momentum_rate=0.5, decay_rate=0.1, l1_rate=0.001,
-                             l2_rate=0.001, batch_size=10, nb_epoch=10, nb_sample=50)
-        # make a file with the visualization of the model
-        # plot_model(model.model, to_file='./single_model.png')
-
-        # init PatchLibrary and then make patches from training_set
-        if training_folder_path is not None and label_folder_path is not None:
-            training_set = glob(training_folder_path + '/**')
+                                    x65_uniftrain=x65_uniftrain)
+        else:
             patches = PatchLibrary(train_samples=training_set, label_folder_path=label_folder_path,
                                    num_samples=brain_seg.nb_sample, patch_size=(33, 33), subpatches_33=False)
             x33_train, y_train = patches.make_training_patches(balanced_classes=False)
             x33_uniftrain, y_uniftrain = patches.make_training_patches()
             # fit model
             brain_seg.fit_model(x33_train, y_train, x33_uniftrain, y_uniftrain)
-            # save model
-            if save_model_path is not None:
-                brain_seg.save_model(save_model_path)
-        # load model
-        elif load_model_path is not None:
-            brain_seg.model = brain_seg.load_model(load_model_path)
-        else:
-            print 'Trained model cannot be created without providing the path of a model to load or the folder_path of ' \
-                  'training samples and folder paths of relative labels!'
-        # segment and show segmented image
-        if to_predict_paths is not None:
-            for to_predict in to_predict_paths:
-                brain_seg.show_segmented_image(to_predict, show=True)
-
-
-if __name__ == "__main__":
-    training_folder_path = './Norm_PNG'
-    label_folder_path = './Labels'
-    save_model_path = './saved_model/first_cascade_model(lecun_init)'
-    load_model_path = './first_cascade_model(lecun_init)'
-    to_predict_paths = ['./Norm_PNG/0_104.png']
-    main_model(load_model_path=load_model_path, to_predict_paths=to_predict_paths, cascade_model=True)
+    #load an already trained model if -load is given
+    else:
+        brain_seg.model = brain_seg.load_model('./models/' + result.model_to_load)
+    #save the model if -save is given
+    if result.save is not None:
+        brain_seg.save_model('./models/' + result.save)
+    #predict all the RMI images contained in the given path -test
+    if result.test is not None:
+        tests = glob(result.test + '/**')
+        segmented_images = []
+        for topredict_img in tests:
+            brain_seg.save_segmented_image(topredict_img, show=True)

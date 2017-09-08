@@ -12,13 +12,6 @@ from skimage.morphology import disk
 import progressbar
 from sklearn.feature_extraction.image import extract_patches_2d
 
-__author__ = "Matteo Causio"
-
-__license__ = "MIT"
-__version__ = "1.0.1"
-__maintainer__ = "Matteo Causio"
-__status__ = "Production"
-
 progress = progressbar.ProgressBar(widgets=[progressbar.Bar('*', '[', ']'), progressbar.Percentage(), ' '])
 np.random.seed(5)
 
@@ -154,8 +147,7 @@ class PatchLibrary(object):
             plist.append(p)
         return np.array(zip(np.array(plist[0]), np.array(plist[1]), np.array(plist[2]), np.array(plist[3])))
 
-
-    def make_training_patches(self, entropy=False, balanced_classes=True, classes=[0, 1, 2, 3, 4]):
+    def make_training_patches(self, balanced_classes=True, classes=[0, 1, 2, 3, 4]):
         '''
         Creates X65, X33 and y, respectively the patches 65x65 and 33x33 around the same pixel and the label of that pixel for training DCNN
         INPUT   (1) bool 'entropy': if True, half of the patches are chosen based on highest entropy area. defaults to False.
@@ -186,7 +178,7 @@ class PatchLibrary(object):
                     if np.max(p[img_ix][slice]) != 0:
                         p[img_ix][slice] /= np.max(p[img_ix][slice])
                 x_patches.append(p[img_ix])
-        if self.subpatches_33 == True:
+        if self.subpatches_33:
             x33_patches = self.center_n(33, x_patches)
             print '33x33 subpatches extracted!'
             return x33_patches, x_patches, labels
